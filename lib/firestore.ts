@@ -1,7 +1,6 @@
 import { collection, doc, getDoc, getDocs, setDoc, query, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
 import { WorkoutPlan, WorkoutSession, BodyMeasurement, BioimpedanciaEntry, WeightEntry } from './types';
-import { WORKOUTS } from './data';
 
 export interface UserProfile {
   goalWeight: number;
@@ -29,12 +28,17 @@ export async function getUserPlan(uid: string): Promise<WorkoutPlan[]> {
   const ref = doc(db, 'users', uid, 'meta', 'plan');
   const snap = await getDoc(ref);
   if (snap.exists()) return (snap.data() as { days: WorkoutPlan[] }).days;
-  const defaultDays = Array.from({ length: 7 }, (_, i) => {
-    const found = WORKOUTS.find((w) => w.dayOfWeek === i);
-    return found ?? { id: String(i), label: '', name: '', dayOfWeek: i, isRest: true, warmup: [], exercises: [] };
-  });
-  await setDoc(ref, { days: defaultDays });
-  return defaultDays;
+  const emptyDays: WorkoutPlan[] = Array.from({ length: 7 }, (_, i) => ({
+    id: String(i),
+    label: '',
+    name: '',
+    dayOfWeek: i,
+    isRest: true,
+    warmup: [],
+    exercises: [],
+  }));
+  await setDoc(ref, { days: emptyDays });
+  return emptyDays;
 }
 
 export async function saveUserPlan(uid: string, days: WorkoutPlan[]): Promise<void> {

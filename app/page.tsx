@@ -75,12 +75,21 @@ export default function TreinoHoje() {
   }
 
   if (!workout || workout.isRest) {
+    const hasNoplan = !workout || (!workout.name && !workout.label);
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="text-6xl mb-4">😴</div>
-        <h1 className="text-2xl font-bold text-zinc-100 mb-2">Dia de Descanso</h1>
-        <p className="text-zinc-400">{days[dayOfWeek]} — recuperação ativa</p>
-        <p className="text-zinc-500 mt-4 text-sm">Hidrate-se, durma bem, deixa o músculo crescer.</p>
+        <div className="text-6xl mb-4">{hasNoplan ? '📋' : '😴'}</div>
+        <h1 className="text-2xl font-bold text-zinc-100 mb-2">
+          {hasNoplan ? 'Sem treino configurado' : 'Dia de Descanso'}
+        </h1>
+        <p className="text-zinc-400">{days[dayOfWeek]}</p>
+        {hasNoplan ? (
+          <a href="/plano/editar" className="mt-4 text-sm text-emerald-400 underline">
+            Criar meu plano de treino
+          </a>
+        ) : (
+          <p className="text-zinc-500 mt-4 text-sm">Hidrate-se, durma bem, deixa o músculo crescer.</p>
+        )}
       </div>
     );
   }
