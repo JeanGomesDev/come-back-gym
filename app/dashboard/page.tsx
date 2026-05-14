@@ -22,89 +22,6 @@ function StatCard({ label, value, sub, color = 'emerald' }: { label: string; val
   );
 }
 
-function SetupForm({ onSave }: { onSave: (profile: Partial<UserProfile>, initialWeight?: number) => void }) {
-  const currentYear = new Date().getFullYear();
-  const [goalWeight, setGoalWeight] = useState('');
-  const [currentWeight, setCurrentWeight] = useState('');
-  const [goalWorkouts, setGoalWorkouts] = useState('');
-  const [endDate, setEndDate] = useState(`${currentYear}-12-31`);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit() {
-    if (!goalWorkouts) return;
-    setSaving(true);
-    const profile: Partial<UserProfile> = {
-      goalWeight: parseFloat(goalWeight) || 0,
-      goalWorkouts: parseInt(goalWorkouts),
-      startDate: new Date().toISOString().split('T')[0],
-      endDate,
-    };
-    onSave(profile, currentWeight ? parseFloat(currentWeight) : undefined);
-  }
-
-  return (
-    <div className="flex flex-col min-h-[70vh] justify-center">
-      <div className="text-center mb-8">
-        <div className="text-4xl mb-3">🎯</div>
-        <h1 className="text-2xl font-bold text-zinc-100">Configure suas metas</h1>
-        <p className="text-zinc-500 text-sm mt-1">Estas informações são só suas — outros usuários não veem.</p>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs text-zinc-400 block mb-1">Peso atual (kg)</label>
-          <input
-            type="number" step="0.1"
-            value={currentWeight}
-            onChange={(e) => setCurrentWeight(e.target.value)}
-            placeholder="Ex: 70.5"
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-zinc-400 block mb-1">Meta de peso (kg)</label>
-          <input
-            type="number" step="0.1"
-            value={goalWeight}
-            onChange={(e) => setGoalWeight(e.target.value)}
-            placeholder="Ex: 80"
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-zinc-400 block mb-1">Meta de treinos no ano *</label>
-          <input
-            type="number"
-            value={goalWorkouts}
-            onChange={(e) => setGoalWorkouts(e.target.value)}
-            placeholder="Ex: 150"
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-zinc-400 block mb-1">Data final da meta</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={!goalWorkouts || saving}
-          className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-3 rounded-2xl transition-colors mt-2"
-        >
-          {saving ? 'Salvando...' : 'Começar'}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -131,18 +48,6 @@ export default function DashboardPage() {
       setLoadingData(false);
     }).catch(() => setLoadingData(false));
   }, [user]);
-
-  async function handleSetup(profileData: Partial<UserProfile>, initialWeight?: number) {
-    if (!user) return;
-    await updateUserProfile(user.uid, profileData);
-    if (initialWeight) {
-      const today = new Date().toISOString().split('T')[0];
-      const entry = { date: today, weight: initialWeight };
-      await saveWeightEntry(user.uid, entry);
-      setWeightHistory([entry]);
-    }
-    setProfile((p) => ({ ...p!, ...profileData }));
-  }
 
   async function handleAddWeight() {
     if (!newWeight || !user) return;
@@ -172,11 +77,6 @@ export default function DashboardPage() {
 
   if (loadingData) return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
   if (!profile) return null;
-
-  // New user — show setup
-  if (profile.goalWorkouts === 0) {
-    return <SetupForm onSave={handleSetup} />;
-  }
 
   const totalWorkouts = sessions.length;
   const goal = profile.goalWorkouts;

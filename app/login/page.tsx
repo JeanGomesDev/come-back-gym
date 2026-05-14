@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -11,14 +10,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export default function LoginPage() {
-  const { user, loading, signInWithGoogle } = useAuth();
-  const router = useRouter();
+  const { signInWithGoogle } = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!loading && user) router.replace('/');
-  }, [user, loading, router]);
 
   async function handleLogin() {
     setSigningIn(true);
@@ -28,14 +22,6 @@ export default function LoginPage() {
       setError(ERROR_MESSAGES[errorCode] ?? `Erro: ${errorCode}`);
       setSigningIn(false);
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
   }
 
   return (

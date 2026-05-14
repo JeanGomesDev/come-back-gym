@@ -7,6 +7,7 @@ export interface UserProfile {
   goalWorkouts: number;
   startDate: string;
   endDate: string;
+  onboardingCompleted?: boolean;
 }
 
 const DEFAULT_PROFILE: UserProfile = {

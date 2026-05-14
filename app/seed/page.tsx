@@ -56,6 +56,7 @@ export default function SeedPage() {
         goalWorkouts: 175,
         startDate: '2026-05-10',
         endDate: '2026-12-31',
+        onboardingCompleted: true,
       }, { merge: true });
 
       setDone(true);
