@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, setDoc, query, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
-import { WorkoutSession, BodyMeasurement, BioimpedanciaEntry, WeightEntry } from './types';
+import { WorkoutPlan, WorkoutSession, BodyMeasurement, BioimpedanciaEntry, WeightEntry } from './types';
+import { WORKOUTS } from './data';
 
 export interface UserProfile {
   goalWeight: number;
@@ -19,58 +20,63 @@ const DEFAULT_PROFILE: UserProfile = {
 export async function getUserProfile(uid: string): Promise<UserProfile> {
   const ref = doc(db, 'users', uid, 'meta', 'profile');
   const snap = await getDoc(ref);
-  if (snap.exists()) {
-    return snap.data() as UserProfile;
-  }
+  if (snap.exists()) return snap.data() as UserProfile;
   await setDoc(ref, DEFAULT_PROFILE);
   return DEFAULT_PROFILE;
 }
 
+export async function getUserPlan(uid: string): Promise<WorkoutPlan[]> {
+  const ref = doc(db, 'users', uid, 'meta', 'plan');
+  const snap = await getDoc(ref);
+  if (snap.exists()) return (snap.data() as { days: WorkoutPlan[] }).days;
+  const defaultDays = Array.from({ length: 7 }, (_, i) => {
+    const found = WORKOUTS.find((w) => w.dayOfWeek === i);
+    return found ?? { id: String(i), label: '', name: '', dayOfWeek: i, isRest: true, warmup: [], exercises: [] };
+  });
+  await setDoc(ref, { days: defaultDays });
+  return defaultDays;
+}
+
+export async function saveUserPlan(uid: string, days: WorkoutPlan[]): Promise<void> {
+  await setDoc(doc(db, 'users', uid, 'meta', 'plan'), { days });
+}
+
 export async function getWorkoutSessions(uid: string): Promise<WorkoutSession[]> {
-  const ref = collection(db, 'users', uid, 'sessions');
-  const q = query(ref, orderBy('date'));
+  const q = query(collection(db, 'users', uid, 'sessions'), orderBy('date'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as WorkoutSession);
 }
 
 export async function saveWorkoutSession(uid: string, session: WorkoutSession): Promise<void> {
-  const docId = `${session.date}-${session.workoutId}`;
-  const ref = doc(db, 'users', uid, 'sessions', docId);
-  await setDoc(ref, session);
+  await setDoc(doc(db, 'users', uid, 'sessions', `${session.date}-${session.workoutId}`), session);
 }
 
 export async function getMeasurements(uid: string): Promise<BodyMeasurement[]> {
-  const ref = collection(db, 'users', uid, 'measurements');
-  const q = query(ref, orderBy('date'));
+  const q = query(collection(db, 'users', uid, 'measurements'), orderBy('date'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as BodyMeasurement);
 }
 
 export async function saveMeasurement(uid: string, m: BodyMeasurement): Promise<void> {
-  const ref = doc(db, 'users', uid, 'measurements', m.date);
-  await setDoc(ref, m);
+  await setDoc(doc(db, 'users', uid, 'measurements', m.date), m);
 }
 
 export async function getBioimpedancia(uid: string): Promise<BioimpedanciaEntry[]> {
-  const ref = collection(db, 'users', uid, 'bioimpedancia');
-  const q = query(ref, orderBy('date'));
+  const q = query(collection(db, 'users', uid, 'bioimpedancia'), orderBy('date'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as BioimpedanciaEntry);
 }
 
 export async function saveBioimpedancia(uid: string, b: BioimpedanciaEntry): Promise<void> {
-  const ref = doc(db, 'users', uid, 'bioimpedancia', b.date);
-  await setDoc(ref, b);
+  await setDoc(doc(db, 'users', uid, 'bioimpedancia', b.date), b);
 }
 
 export async function getWeightHistory(uid: string): Promise<WeightEntry[]> {
-  const ref = collection(db, 'users', uid, 'weight');
-  const q = query(ref, orderBy('date'));
+  const q = query(collection(db, 'users', uid, 'weight'), orderBy('date'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as WeightEntry);
 }
 
 export async function saveWeightEntry(uid: string, w: WeightEntry): Promise<void> {
-  const ref = doc(db, 'users', uid, 'weight', w.date);
-  await setDoc(ref, w);
+  await setDoc(doc(db, 'users', uid, 'weight', w.date), w);
 }
