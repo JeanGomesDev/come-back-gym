@@ -77,18 +77,22 @@ export default function TreinoHoje() {
   if (!workout || workout.isRest) {
     const hasNoplan = !workout || (!workout.name && !workout.label);
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="text-6xl mb-4">{hasNoplan ? '📋' : '😴'}</div>
-        <h1 className="text-2xl font-bold text-zinc-100 mb-2">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="text-6xl mb-5">{hasNoplan ? '📋' : '😴'}</div>
+        <h1 className="text-2xl font-bold text-zinc-100 mb-1">
           {hasNoplan ? 'Sem treino configurado' : 'Dia de Descanso'}
         </h1>
-        <p className="text-zinc-400">{days[dayOfWeek]}</p>
+        <p className="text-zinc-500 text-sm mb-6">{days[dayOfWeek]}</p>
         {hasNoplan ? (
-          <a href="/plano/editar" className="mt-4 text-sm text-emerald-400 underline">
+          <a
+            href="/plano/editar"
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold px-6 py-3 rounded-2xl transition-all duration-150 shadow-lg shadow-emerald-900/30"
+          >
+            <span className="text-base">+</span>
             Criar meu plano de treino
           </a>
         ) : (
-          <p className="text-zinc-500 mt-4 text-sm">Hidrate-se, durma bem, deixa o músculo crescer.</p>
+          <p className="text-zinc-500 text-sm">Hidrate-se, durma bem, deixa o músculo crescer.</p>
         )}
       </div>
     );
