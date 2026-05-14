@@ -1,23 +1,20 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import {
-  User, onAuthStateChanged, signInWithRedirect,
-  getRedirectResult, signOut,
-} from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => Promise<string | null>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signInWithGoogle: async () => {},
+  signInWithGoogle: async () => null,
   logout: async () => {},
 });
 
@@ -26,37 +23,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Keep loading=true until BOTH redirect result and auth state are resolved.
-    // This prevents AppShell from redirecting to /login before the redirect
-    // result from Google is processed (which happens on the return trip).
-    let redirectDone = false;
-    let authDone = false;
-
-    function tryFinish() {
-      if (redirectDone && authDone) setLoading(false);
-    }
-
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) setUser(result.user);
-      })
-      .catch(() => {})
-      .finally(() => {
-        redirectDone = true;
-        tryFinish();
-      });
-
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      authDone = true;
-      tryFinish();
+      setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
-  async function signInWithGoogle() {
-    await signInWithRedirect(auth, googleProvider);
+  async function signInWithGoogle(): Promise<string | null> {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      return null;
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? 'unknown';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        return null;
+      }
+      return code;
+    }
   }
 
   async function logout() {
