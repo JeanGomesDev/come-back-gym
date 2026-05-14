@@ -10,10 +10,10 @@ export interface UserProfile {
 }
 
 const DEFAULT_PROFILE: UserProfile = {
-  goalWeight: 70,
-  goalWorkouts: 175,
-  startDate: '2026-05-10',
-  endDate: '2026-12-31',
+  goalWeight: 0,
+  goalWorkouts: 0,
+  startDate: new Date().toISOString().split('T')[0],
+  endDate: `${new Date().getFullYear()}-12-31`,
 };
 
 export async function getUserProfile(uid: string): Promise<UserProfile> {
@@ -39,6 +39,10 @@ export async function getUserPlan(uid: string): Promise<WorkoutPlan[]> {
   }));
   await setDoc(ref, { days: emptyDays });
   return emptyDays;
+}
+
+export async function updateUserProfile(uid: string, data: Partial<UserProfile>): Promise<void> {
+  await setDoc(doc(db, 'users', uid, 'meta', 'profile'), data, { merge: true });
 }
 
 export async function saveUserPlan(uid: string, days: WorkoutPlan[]): Promise<void> {
