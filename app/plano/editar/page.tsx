@@ -8,6 +8,114 @@ import { WorkoutPlan, Exercise } from '@/lib/types';
 
 const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
+const REST_OPTIONS = [
+  { label: '30s', value: '30s' },
+  { label: '45s', value: '45s' },
+  { label: '60s', value: '60s' },
+  { label: '90s', value: '90s' },
+  { label: '2min', value: '120s' },
+  { label: '3min', value: '180s' },
+];
+
+function Stepper({
+  value,
+  min = 1,
+  max = 99,
+  onChange,
+}: {
+  value: number;
+  min?: number;
+  max?: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
+      <button
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
+      >
+        −
+      </button>
+      <span className="flex-1 text-sm text-zinc-100 font-semibold text-center min-w-[2rem]">
+        {value}
+      </span>
+      <button
+        onClick={() => onChange(Math.min(max, value + 1))}
+        className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+function SeriesInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const match = value.match(/^(\d+)x(\d+)$/);
+
+  if (match) {
+    const sets = parseInt(match[1]);
+    const reps = parseInt(match[2]);
+    return (
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <p className="text-xs text-zinc-500 mb-1.5 text-center">Séries</p>
+          <Stepper value={sets} onChange={(v) => onChange(`${v}x${reps}`)} />
+        </div>
+        <span className="text-zinc-600 text-sm pb-2.5 select-none">×</span>
+        <div className="flex-1">
+          <p className="text-xs text-zinc-500 mb-1.5 text-center">Reps</p>
+          <Stepper value={reps} onChange={(v) => onChange(`${sets}x${v}`)} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-zinc-500 mb-1.5">Séries × Reps</p>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="4x10"
+        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+      />
+    </div>
+  );
+}
+
+function RestInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const isPreset = REST_OPTIONS.some((o) => o.value === value);
+
+  return (
+    <div>
+      <p className="text-xs text-zinc-500 mb-1.5">Descanso</p>
+      <div className="flex gap-1.5 flex-wrap">
+        {REST_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+              value === opt.value
+                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {!isPreset && (
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Personalizado (ex: 60-90s)"
+          className="mt-2 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
+        />
+      )}
+    </div>
+  );
+}
+
 export default function EditarPlanoPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -18,53 +126,79 @@ export default function EditarPlanoPage() {
 
   useEffect(() => {
     if (!user) return;
-    getUserPlan(user.uid).then((days) => {
-      setPlan(days);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    getUserPlan(user.uid)
+      .then((days) => {
+        setPlan(days);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [user]);
 
   function updateDay(dayOfWeek: number, updates: Partial<WorkoutPlan>) {
-    setPlan((prev) => prev.map((d) => d.dayOfWeek === dayOfWeek ? { ...d, ...updates } : d));
+    setPlan((prev) =>
+      prev.map((d) => (d.dayOfWeek === dayOfWeek ? { ...d, ...updates } : d))
+    );
   }
 
   function addExercise(dayOfWeek: number) {
-    const ex: Exercise = { id: crypto.randomUUID(), name: '', series: '', rest: '', initialWeight: '' };
-    setPlan((prev) => prev.map((d) => d.dayOfWeek === dayOfWeek ? { ...d, exercises: [...d.exercises, ex] } : d));
+    const ex: Exercise = {
+      id: crypto.randomUUID(),
+      name: '',
+      series: '3x10',
+      rest: '60s',
+      initialWeight: '',
+    };
+    setPlan((prev) =>
+      prev.map((d) =>
+        d.dayOfWeek === dayOfWeek ? { ...d, exercises: [...d.exercises, ex] } : d
+      )
+    );
   }
 
   function updateExercise(dayOfWeek: number, exId: string, updates: Partial<Exercise>) {
-    setPlan((prev) => prev.map((d) => {
-      if (d.dayOfWeek !== dayOfWeek) return d;
-      return { ...d, exercises: d.exercises.map((e) => e.id === exId ? { ...e, ...updates } : e) };
-    }));
+    setPlan((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        return { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, ...updates } : e)) };
+      })
+    );
   }
 
   function removeExercise(dayOfWeek: number, exId: string) {
-    setPlan((prev) => prev.map((d) => {
-      if (d.dayOfWeek !== dayOfWeek) return d;
-      return { ...d, exercises: d.exercises.filter((e) => e.id !== exId) };
-    }));
+    setPlan((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        return { ...d, exercises: d.exercises.filter((e) => e.id !== exId) };
+      })
+    );
   }
 
   function addWarmup(dayOfWeek: number) {
-    setPlan((prev) => prev.map((d) => d.dayOfWeek === dayOfWeek ? { ...d, warmup: [...d.warmup, { text: '' }] } : d));
+    setPlan((prev) =>
+      prev.map((d) =>
+        d.dayOfWeek === dayOfWeek ? { ...d, warmup: [...d.warmup, { text: '' }] } : d
+      )
+    );
   }
 
   function updateWarmup(dayOfWeek: number, index: number, text: string) {
-    setPlan((prev) => prev.map((d) => {
-      if (d.dayOfWeek !== dayOfWeek) return d;
-      const warmup = [...d.warmup];
-      warmup[index] = { text };
-      return { ...d, warmup };
-    }));
+    setPlan((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        const warmup = [...d.warmup];
+        warmup[index] = { text };
+        return { ...d, warmup };
+      })
+    );
   }
 
   function removeWarmup(dayOfWeek: number, index: number) {
-    setPlan((prev) => prev.map((d) => {
-      if (d.dayOfWeek !== dayOfWeek) return d;
-      return { ...d, warmup: d.warmup.filter((_, i) => i !== index) };
-    }));
+    setPlan((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        return { ...d, warmup: d.warmup.filter((_, i) => i !== index) };
+      })
+    );
   }
 
   async function handleSave() {
@@ -95,21 +229,30 @@ export default function EditarPlanoPage() {
 
       <div className="space-y-3">
         {plan.map((day) => (
-          <div key={day.dayOfWeek} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+          <div
+            key={day.dayOfWeek}
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden"
+          >
             {/* Day header */}
             <div className="flex items-center gap-3 p-4">
-              <span className="text-sm font-semibold text-zinc-400 w-8">{DAYS[day.dayOfWeek].slice(0, 3)}</span>
+              <span className="text-sm font-semibold text-zinc-400 w-8">
+                {DAYS[day.dayOfWeek].slice(0, 3)}
+              </span>
               <button
                 onClick={() => updateDay(day.dayOfWeek, { isRest: !day.isRest })}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                  day.isRest ? 'bg-zinc-800 text-zinc-500' : 'bg-emerald-500/20 text-emerald-400'
+                  day.isRest
+                    ? 'bg-zinc-800 text-zinc-500'
+                    : 'bg-emerald-500/20 text-emerald-400'
                 }`}
               >
                 {day.isRest ? 'Descanso' : 'Treino'}
               </button>
               {!day.isRest && (
                 <button
-                  onClick={() => setExpandedDay(expandedDay === day.dayOfWeek ? null : day.dayOfWeek)}
+                  onClick={() =>
+                    setExpandedDay(expandedDay === day.dayOfWeek ? null : day.dayOfWeek)
+                  }
                   className="ml-auto text-zinc-500 text-xs hover:text-zinc-300 transition-colors"
                 >
                   {expandedDay === day.dayOfWeek ? '▲ fechar' : '▼ editar exercícios'}
@@ -147,8 +290,15 @@ export default function EditarPlanoPage() {
                     {/* Warmup */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Aquecimento</h3>
-                        <button onClick={() => addWarmup(day.dayOfWeek)} className="text-xs text-emerald-400 hover:text-emerald-300">+ adicionar</button>
+                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                          Aquecimento
+                        </h3>
+                        <button
+                          onClick={() => addWarmup(day.dayOfWeek)}
+                          className="text-xs text-emerald-400 hover:text-emerald-300"
+                        >
+                          + adicionar
+                        </button>
                       </div>
                       <div className="space-y-2">
                         {day.warmup.map((w, i) => (
@@ -159,7 +309,12 @@ export default function EditarPlanoPage() {
                               placeholder="Ex: Rotação de ombros 15x"
                               className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                             />
-                            <button onClick={() => removeWarmup(day.dayOfWeek, i)} className="text-zinc-600 hover:text-red-400 px-2 text-lg leading-none">×</button>
+                            <button
+                              onClick={() => removeWarmup(day.dayOfWeek, i)}
+                              className="text-zinc-600 hover:text-red-400 px-2 text-lg leading-none"
+                            >
+                              ×
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -168,39 +323,68 @@ export default function EditarPlanoPage() {
                     {/* Exercises */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Exercícios</h3>
-                        <button onClick={() => addExercise(day.dayOfWeek)} className="text-xs text-emerald-400 hover:text-emerald-300">+ adicionar</button>
+                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                          Exercícios
+                        </h3>
+                        <button
+                          onClick={() => addExercise(day.dayOfWeek)}
+                          className="text-xs text-emerald-400 hover:text-emerald-300"
+                        >
+                          + adicionar
+                        </button>
                       </div>
-                      <div className="space-y-3">
-                        {day.exercises.map((ex) => (
-                          <div key={ex.id} className="bg-zinc-800/50 rounded-xl p-3 space-y-2">
-                            <div className="flex gap-2">
+                      <div className="space-y-4">
+                        {day.exercises.map((ex, idx) => (
+                          <div key={ex.id} className="bg-zinc-800/50 rounded-2xl p-4 space-y-4">
+                            {/* Exercise name */}
+                            <div className="flex gap-2 items-center">
+                              <span className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-400 font-bold flex-shrink-0">
+                                {idx + 1}
+                              </span>
                               <input
                                 value={ex.name}
-                                onChange={(e) => updateExercise(day.dayOfWeek, ex.id, { name: e.target.value })}
+                                onChange={(e) =>
+                                  updateExercise(day.dayOfWeek, ex.id, { name: e.target.value })
+                                }
                                 placeholder="Nome do exercício"
-                                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+                                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                               />
-                              <button onClick={() => removeExercise(day.dayOfWeek, ex.id)} className="text-zinc-600 hover:text-red-400 px-2 text-lg leading-none">×</button>
+                              <button
+                                onClick={() => removeExercise(day.dayOfWeek, ex.id)}
+                                className="text-zinc-600 hover:text-red-400 px-1 text-xl leading-none flex-shrink-0"
+                              >
+                                ×
+                              </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <input
-                                value={ex.series}
-                                onChange={(e) => updateExercise(day.dayOfWeek, ex.id, { series: e.target.value })}
-                                placeholder="Séries (4x10)"
-                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
-                              />
-                              <input
-                                value={ex.rest}
-                                onChange={(e) => updateExercise(day.dayOfWeek, ex.id, { rest: e.target.value })}
-                                placeholder="Descanso (90s)"
-                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
-                              />
+
+                            {/* Series stepper */}
+                            <SeriesInput
+                              value={ex.series}
+                              onChange={(v) =>
+                                updateExercise(day.dayOfWeek, ex.id, { series: v })
+                              }
+                            />
+
+                            {/* Rest chips */}
+                            <RestInput
+                              value={ex.rest}
+                              onChange={(v) =>
+                                updateExercise(day.dayOfWeek, ex.id, { rest: v })
+                              }
+                            />
+
+                            {/* Weight text */}
+                            <div>
+                              <p className="text-xs text-zinc-500 mb-1.5">Peso inicial</p>
                               <input
                                 value={ex.initialWeight}
-                                onChange={(e) => updateExercise(day.dayOfWeek, ex.id, { initialWeight: e.target.value })}
-                                placeholder="Peso (30kg)"
-                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
+                                onChange={(e) =>
+                                  updateExercise(day.dayOfWeek, ex.id, {
+                                    initialWeight: e.target.value,
+                                  })
+                                }
+                                placeholder="Ex: 8-10kg cada, barra + 10kg…"
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                               />
                             </div>
                           </div>
@@ -210,11 +394,13 @@ export default function EditarPlanoPage() {
 
                     {/* Tip */}
                     <div>
-                      <label className="text-xs text-zinc-500 block mb-1">Dica do treino (opcional)</label>
+                      <label className="text-xs text-zinc-500 block mb-1">
+                        Dica do treino (opcional)
+                      </label>
                       <input
                         value={day.tip ?? ''}
                         onChange={(e) => updateDay(day.dayOfWeek, { tip: e.target.value })}
-                        placeholder="Ex: Desça até tocar o peito no supino..."
+                        placeholder="Ex: Desça até tocar o peito no supino…"
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
