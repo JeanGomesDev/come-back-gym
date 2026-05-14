@@ -4,17 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
-const ERROR_MESSAGES: Record<string, string> = {
-  'auth/unauthorized-domain': 'Este domínio não está autorizado no Firebase. Adicione-o em Authentication → Settings → Authorized domains.',
-  'auth/popup-blocked': 'O popup foi bloqueado pelo navegador. Permita popups para este site e tente novamente.',
-  'auth/network-request-failed': 'Erro de rede. Verifique sua conexão e tente novamente.',
-};
-
 export default function LoginPage() {
   const { user, loading, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -24,12 +17,8 @@ export default function LoginPage() {
 
   async function handleLogin() {
     setSigningIn(true);
-    setError(null);
-    const errorCode = await signInWithGoogle();
-    if (errorCode) {
-      setError(ERROR_MESSAGES[errorCode] ?? `Erro: ${errorCode}`);
-      setSigningIn(false);
-    }
+    await signInWithGoogle();
+    // Page will redirect to Google — no need to reset state
   }
 
   if (loading) {
@@ -64,14 +53,8 @@ export default function LoginPage() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
           )}
-          {signingIn ? 'Entrando...' : 'Entrar com Google'}
+          {signingIn ? 'Redirecionando...' : 'Entrar com Google'}
         </button>
-
-        {error && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-            <p className="text-red-400 text-xs text-center">{error}</p>
-          </div>
-        )}
 
         <p className="text-center text-zinc-600 text-xs mt-8">
           Apenas usuários autorizados podem acessar o app.
