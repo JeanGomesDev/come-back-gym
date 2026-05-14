@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
 import { WorkoutPlan, WorkoutSession, BodyMeasurement, BioimpedanciaEntry, WeightEntry } from './types';
 
@@ -88,4 +88,16 @@ export async function getWeightHistory(uid: string): Promise<WeightEntry[]> {
 
 export async function saveWeightEntry(uid: string, w: WeightEntry): Promise<void> {
   await setDoc(doc(db, 'users', uid, 'weight', w.date), w);
+}
+
+export async function clearUserData(uid: string): Promise<void> {
+  for (const col of ['sessions', 'measurements', 'bioimpedancia', 'weight']) {
+    const snap = await getDocs(collection(db, 'users', uid, col));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  }
+  const emptyDays: WorkoutPlan[] = Array.from({ length: 7 }, (_, i) => ({
+    id: String(i), label: '', name: '', dayOfWeek: i, isRest: true, warmup: [], exercises: [],
+  }));
+  await setDoc(doc(db, 'users', uid, 'meta', 'plan'), { days: emptyDays });
+  await setDoc(doc(db, 'users', uid, 'meta', 'profile'), DEFAULT_PROFILE);
 }
