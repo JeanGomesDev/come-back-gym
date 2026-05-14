@@ -32,7 +32,7 @@ export default function Navigation() {
     await clearUserData(user.uid);
     setClearing(false);
     // Full reload so AppShell re-checks profile and redirects to /onboarding
-    window.location.href = '/';
+    window.location.href = '/onboarding';
   }
 
   async function handleLogout() {
