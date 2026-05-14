@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getState, addBioimpedancia } from '@/lib/storage';
+import { getBioimpedancia, saveBioimpedancia } from '@/lib/firestore';
+import { useAuth } from '@/lib/auth-context';
 import { BioimpedanciaEntry } from '@/lib/types';
 
 type BioField = {
@@ -43,25 +44,38 @@ const INITIAL_STATUSES: Record<string, { label: string; color: string }> = {
 };
 
 export default function BioimpedanciaPage() {
+  const { user } = useAuth();
   const [entries, setEntries] = useState<BioimpedanciaEntry[]>([]);
   const [form, setForm] = useState<Partial<BioimpedanciaEntry>>({});
   const [showForm, setShowForm] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    const state = getState();
-    setEntries(state.bioimpedancia);
-  }, []);
+    if (!user) return;
+    setLoadingData(true);
+    getBioimpedancia(user.uid).then((data) => {
+      setEntries(data);
+      setLoadingData(false);
+    }).catch(() => setLoadingData(false));
+  }, [user]);
+
+  if (loadingData) {
+    return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
+  }
 
   const latest = entries[entries.length - 1];
   const initial = entries[0];
 
-  function handleSave() {
-    if (!form.peso) return;
+  async function handleSave() {
+    if (!form.peso || !user) return;
     const today = new Date().toISOString().split('T')[0];
     const entry = { ...latest, ...form, date: today } as BioimpedanciaEntry;
-    addBioimpedancia(entry);
-    setEntries(getState().bioimpedancia);
+    await saveBioimpedancia(user.uid, entry);
+    setEntries((prev) => {
+      const filtered = prev.filter((e) => e.date !== today);
+      return [...filtered, entry].sort((a, b) => a.date.localeCompare(b.date));
+    });
     setSaved(true);
     setForm({});
     setShowForm(false);
@@ -84,6 +98,10 @@ export default function BioimpedanciaPage() {
         {initial ? new Date(initial.date + 'T12:00:00').toLocaleDateString('pt-BR') : ''}
         {latest && latest !== initial ? ` · Última: ${new Date(latest.date + 'T12:00:00').toLocaleDateString('pt-BR')}` : ''}
       </p>
+
+      {!initial && (
+        <p className="text-zinc-500 text-sm mb-4">Nenhuma bioimpedância registrada ainda</p>
+      )}
 
       {latest && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-6">

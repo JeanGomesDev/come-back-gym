@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
-import { getState, addWeightEntry } from '@/lib/storage';
-import { AppState } from '@/lib/types';
+import { getUserProfile, getWorkoutSessions, getWeightHistory, saveWeightEntry, UserProfile } from '@/lib/firestore';
+import { useAuth } from '@/lib/auth-context';
+import { WorkoutSession, WeightEntry } from '@/lib/types';
 
 function StatCard({ label, value, sub, color = 'emerald' }: { label: string; value: string | number; sub?: string; color?: string }) {
   const colorMap: Record<string, string> = {
@@ -22,33 +23,51 @@ function StatCard({ label, value, sub, color = 'emerald' }: { label: string; val
 }
 
 export default function DashboardPage() {
-  const [state, setState] = useState<AppState | null>(null);
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
   const [newWeight, setNewWeight] = useState('');
   const [weightSaved, setWeightSaved] = useState(false);
 
   useEffect(() => {
-    setState(getState());
-  }, []);
+    if (!user) return;
+    setLoadingData(true);
+    Promise.all([
+      getUserProfile(user.uid),
+      getWorkoutSessions(user.uid),
+      getWeightHistory(user.uid),
+    ]).then(([prof, sess, weights]) => {
+      setProfile(prof);
+      setSessions(sess);
+      setWeightHistory(weights);
+      setLoadingData(false);
+    }).catch(() => setLoadingData(false));
+  }, [user]);
 
-  function handleAddWeight() {
-    if (!newWeight || !state) return;
+  async function handleAddWeight() {
+    if (!newWeight || !user) return;
     const today = new Date().toISOString().split('T')[0];
-    addWeightEntry({ date: today, weight: parseFloat(newWeight) });
-    setState(getState());
+    const entry: WeightEntry = { date: today, weight: parseFloat(newWeight) };
+    await saveWeightEntry(user.uid, entry);
+    setWeightHistory((prev) => {
+      const filtered = prev.filter((w) => w.date !== today);
+      return [...filtered, entry].sort((a, b) => a.date.localeCompare(b.date));
+    });
     setNewWeight('');
     setWeightSaved(true);
     setTimeout(() => setWeightSaved(false), 2000);
   }
 
-  if (!state) return <div className="text-zinc-500 text-sm">Carregando...</div>;
+  if (loadingData || !profile) return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
 
-  const sessions = state.workoutSessions;
   const totalWorkouts = sessions.length;
-  const goal = state.goalWorkouts;
+  const goal = profile.goalWorkouts;
   const progress = Math.min((totalWorkouts / goal) * 100, 100);
 
-  const lastWeight = state.weightHistory.length > 0
-    ? state.weightHistory[state.weightHistory.length - 1].weight
+  const lastWeight = weightHistory.length > 0
+    ? weightHistory[weightHistory.length - 1].weight
     : 61.8;
 
   // Streak calculation
@@ -77,13 +96,13 @@ export default function DashboardPage() {
     }));
 
   // Weight chart
-  const weightData = state.weightHistory.map((w) => ({
+  const weightData = weightHistory.map((w) => ({
     date: new Date(w.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
     peso: w.weight,
   }));
 
   // Days until end
-  const endDate = new Date(state.endDate);
+  const endDate = new Date(profile.endDate);
   const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / 86400000));
   const remaining = goal - totalWorkouts;
 
@@ -132,8 +151,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <StatCard label="Treinos Feitos" value={totalWorkouts} sub={`de ${goal} em 2026`} color="emerald" />
         <StatCard label="Sequência" value={`${streak} dias`} sub="consecutivos" color="orange" />
-        <StatCard label="Peso Atual" value={`${lastWeight} kg`} sub={`meta: ${state.goalWeight} kg`} color="blue" />
-        <StatCard label="Falta Ganhar" value={`${(state.goalWeight - lastWeight).toFixed(1)} kg`} sub="de massa magra" color="purple" />
+        <StatCard label="Peso Atual" value={`${lastWeight} kg`} sub={`meta: ${profile.goalWeight} kg`} color="blue" />
+        <StatCard label="Falta Ganhar" value={`${(profile.goalWeight - lastWeight).toFixed(1)} kg`} sub="de massa magra" color="purple" />
       </div>
 
       {/* Monthly chart */}
