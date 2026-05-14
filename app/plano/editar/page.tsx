@@ -36,9 +36,17 @@ function Stepper({
       >
         −
       </button>
-      <span className="flex-1 text-sm text-zinc-100 font-semibold text-center min-w-[2rem]">
-        {value}
-      </span>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => {
+          const v = parseInt(e.target.value);
+          if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
+        }}
+        className="flex-1 text-sm text-zinc-100 font-semibold text-center bg-transparent min-w-0 py-2.5 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
       <button
         onClick={() => onChange(Math.min(max, value + 1))}
         className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
