@@ -1,34 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { WORKOUTS } from '@/lib/data';
 import { getState, addWorkoutSession } from '@/lib/storage';
 import { WorkoutSession } from '@/lib/types';
 
+const today = new Date();
+const dayOfWeek = today.getDay();
+const todayStr = today.toISOString().split('T')[0];
+
 export default function TreinoHoje() {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const todayStr = today.toISOString().split('T')[0];
   const workout = WORKOUTS.find((w) => w.dayOfWeek === dayOfWeek)!;
 
-  const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [duration, setDuration] = useState('');
-  const [notes, setNotes] = useState('');
-  const [saved, setSaved] = useState(false);
-  const [alreadyDone, setAlreadyDone] = useState(false);
-
-  useEffect(() => {
-    const state = getState();
-    const existing = state.workoutSessions.find(
+  function getExistingSession() {
+    return getState().workoutSessions.find(
       (s) => s.date === todayStr && s.workoutId === workout.id
-    );
-    if (existing) {
-      setAlreadyDone(true);
-      setChecked(new Set(existing.checkedExercises));
-      setNotes(existing.notes);
-      setDuration(String(existing.duration));
-    }
-  }, [todayStr, workout.id]);
+    ) ?? null;
+  }
+
+  const [checked, setChecked] = useState<Set<string>>(() => {
+    const existing = getExistingSession();
+    return existing ? new Set(existing.checkedExercises) : new Set();
+  });
+  const [duration, setDuration] = useState(() => {
+    const existing = getExistingSession();
+    return existing ? String(existing.duration) : '';
+  });
+  const [notes, setNotes] = useState(() => getExistingSession()?.notes ?? '');
+  const [saved, setSaved] = useState(false);
+  const [alreadyDone, setAlreadyDone] = useState(() => getExistingSession() !== null);
 
   function toggleCheck(id: string) {
     setChecked((prev) => {
@@ -41,7 +41,7 @@ export default function TreinoHoje() {
 
   function handleSave() {
     const session: WorkoutSession = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       date: todayStr,
       workoutId: workout.id,
       duration: Number(duration) || 0,
