@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getState, addMeasurement } from '@/lib/storage';
+import { getMeasurements, saveMeasurement } from '@/lib/firestore';
+import { useAuth } from '@/lib/auth-context';
 import { BodyMeasurement } from '@/lib/types';
-import { INITIAL_MEASUREMENTS } from '@/lib/data';
 
 const FIELDS: { key: keyof BodyMeasurement; label: string }[] = [
   { key: 'ombro', label: 'Ombro' },
@@ -22,30 +22,45 @@ const FIELDS: { key: keyof BodyMeasurement; label: string }[] = [
 ];
 
 export default function MedidasPage() {
+  const { user } = useAuth();
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [form, setForm] = useState<Partial<BodyMeasurement>>({});
   const [saved, setSaved] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    const state = getState();
-    setMeasurements(state.measurements);
-  }, []);
+    if (!user) return;
+    setLoadingData(true);
+    getMeasurements(user.uid).then((data) => {
+      setMeasurements(data);
+      setLoadingData(false);
+    }).catch(() => setLoadingData(false));
+  }, [user]);
+
+  if (loadingData) {
+    return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
+  }
 
   const latest = measurements[measurements.length - 1];
-  const initial = measurements[0] ?? INITIAL_MEASUREMENTS;
+  const initial = measurements[0];
 
-  function handleSave() {
+  async function handleSave() {
+    if (!user) return;
     const today = new Date().toISOString().split('T')[0];
-    const entry = { ...initial, ...form, date: today } as BodyMeasurement;
-    addMeasurement(entry);
-    setMeasurements(getState().measurements);
+    const base = latest ?? ({} as BodyMeasurement);
+    const entry = { ...base, ...form, date: today } as BodyMeasurement;
+    await saveMeasurement(user.uid, entry);
+    setMeasurements((prev) => {
+      const filtered = prev.filter((m) => m.date !== today);
+      return [...filtered, entry].sort((a, b) => a.date.localeCompare(b.date));
+    });
     setSaved(true);
     setForm({});
     setTimeout(() => setSaved(false), 2000);
   }
 
   function diff(key: keyof BodyMeasurement): string {
-    if (!latest || key === 'date') return '';
+    if (!latest || !initial || key === 'date') return '';
     const cur = latest[key] as number;
     const ini = initial[key] as number;
     if (cur === ini) return '';
@@ -54,12 +69,47 @@ export default function MedidasPage() {
   }
 
   function diffColor(key: keyof BodyMeasurement): string {
-    if (!latest || key === 'date') return '';
+    if (!latest || !initial || key === 'date') return '';
     const cur = latest[key] as number;
     const ini = initial[key] as number;
     if (cur > ini) return 'text-emerald-400';
     if (cur < ini) return 'text-red-400';
     return 'text-zinc-500';
+  }
+
+  if (!initial) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-100 mb-1">Medidas Corporais</h1>
+        <p className="text-zinc-500 text-sm mb-6">Nenhuma medida registrada ainda</p>
+
+        {/* Add new measurement */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-3">Nova Medição</h2>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="text-xs text-zinc-500 block mb-1">{label} (cm)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={(form[key] as number | undefined) ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: parseFloat(e.target.value) || undefined }))}
+                  placeholder="0"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={handleSave}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-colors"
+          >
+            {saved ? '✓ Salvo!' : 'Salvar Medidas'}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

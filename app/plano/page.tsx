@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { WORKOUTS, WEEK_PLAN } from '@/lib/data';
-import { getState } from '@/lib/storage';
+import { getWorkoutSessions } from '@/lib/firestore';
+import { useAuth } from '@/lib/auth-context';
 
 const COLOR_MAP: Record<string, string> = {
   emerald: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
@@ -14,14 +15,17 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 export default function PlanoPage() {
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [doneDates, setDoneDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const state = getState();
-    const thisWeekDates = new Set(state.workoutSessions.map((s) => s.date));
-    setDoneDates(thisWeekDates);
-  }, []);
+    if (!user) return;
+    getWorkoutSessions(user.uid).then((sessions) => {
+      const dates = new Set(sessions.map((s) => s.date));
+      setDoneDates(dates);
+    }).catch(() => {});
+  }, [user]);
 
   const today = new Date().getDay();
 

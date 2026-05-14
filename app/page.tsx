@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { WORKOUTS } from '@/lib/data';
-import { getState, addWorkoutSession } from '@/lib/storage';
+import { saveWorkoutSession, getWorkoutSessions } from '@/lib/firestore';
+import { useAuth } from '@/lib/auth-context';
 import { WorkoutSession } from '@/lib/types';
 
 const today = new Date();
@@ -10,25 +11,32 @@ const dayOfWeek = today.getDay();
 const todayStr = today.toISOString().split('T')[0];
 
 export default function TreinoHoje() {
+  const { user } = useAuth();
   const workout = WORKOUTS.find((w) => w.dayOfWeek === dayOfWeek)!;
 
-  function getExistingSession() {
-    return getState().workoutSessions.find(
-      (s) => s.date === todayStr && s.workoutId === workout.id
-    ) ?? null;
-  }
-
-  const [checked, setChecked] = useState<Set<string>>(() => {
-    const existing = getExistingSession();
-    return existing ? new Set(existing.checkedExercises) : new Set();
-  });
-  const [duration, setDuration] = useState(() => {
-    const existing = getExistingSession();
-    return existing ? String(existing.duration) : '';
-  });
-  const [notes, setNotes] = useState(() => getExistingSession()?.notes ?? '');
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [duration, setDuration] = useState('');
+  const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
-  const [alreadyDone, setAlreadyDone] = useState(() => getExistingSession() !== null);
+  const [alreadyDone, setAlreadyDone] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoadingData(true);
+    getWorkoutSessions(user.uid).then((sessions) => {
+      const existing = sessions.find(
+        (s) => s.date === todayStr && s.workoutId === workout.id
+      ) ?? null;
+      if (existing) {
+        setChecked(new Set(existing.checkedExercises));
+        setDuration(String(existing.duration));
+        setNotes(existing.notes);
+        setAlreadyDone(true);
+      }
+      setLoadingData(false);
+    }).catch(() => setLoadingData(false));
+  }, [user, workout.id]);
 
   function toggleCheck(id: string) {
     setChecked((prev) => {
@@ -39,16 +47,17 @@ export default function TreinoHoje() {
     });
   }
 
-  function handleSave() {
+  async function handleSave() {
+    if (!user) return;
     const session: WorkoutSession = {
-      id: crypto.randomUUID(),
+      id: `${todayStr}-${workout.id}`,
       date: todayStr,
       workoutId: workout.id,
       duration: Number(duration) || 0,
       notes,
       checkedExercises: Array.from(checked),
     };
-    addWorkoutSession(session);
+    await saveWorkoutSession(user.uid, session);
     setSaved(true);
     setAlreadyDone(true);
     setTimeout(() => setSaved(false), 3000);
@@ -65,6 +74,10 @@ export default function TreinoHoje() {
         <p className="text-zinc-500 mt-4 text-sm">Hidrate-se, durma bem, deixa o músculo crescer.</p>
       </div>
     );
+  }
+
+  if (loadingData) {
+    return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
   }
 
   const allExerciseIds = workout.exercises.map((e) => e.id);
