@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getUserPlan, saveUserPlan } from '@/lib/firestore';
@@ -17,43 +17,108 @@ const REST_OPTIONS = [
   { label: '3min', value: '180s' },
 ];
 
+function NumberPickerSheet({
+  value,
+  min,
+  max,
+  label,
+  onSelect,
+  onClose,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  label: string;
+  onSelect: (v: number) => void;
+  onClose: () => void;
+}) {
+  const selectedRef = useRef<HTMLButtonElement>(null);
+  const numbers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }, []);
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[55vh] rounded-t-3xl overflow-hidden shadow-2xl">
+        <div className="max-w-2xl mx-auto w-full bg-zinc-900 border-t border-zinc-700 rounded-t-3xl flex flex-col max-h-[55vh]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 flex-shrink-0">
+            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
+            <span className="text-sm font-semibold text-zinc-100">{label}</span>
+            <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">✕</button>
+          </div>
+          <div className="overflow-y-auto flex-1 overscroll-contain">
+            {numbers.map((n) => (
+              <button
+                key={n}
+                ref={n === value ? selectedRef : null}
+                onClick={() => { onSelect(n); onClose(); }}
+                className={`w-full py-4 text-center text-lg font-medium transition-colors ${
+                  n === value
+                    ? 'text-emerald-400 bg-emerald-500/10 font-bold'
+                    : 'text-zinc-300 hover:bg-zinc-800 active:bg-zinc-700'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Stepper({
   value,
   min = 1,
-  max = 99,
+  max = 50,
+  label,
   onChange,
 }: {
   value: number;
   min?: number;
   max?: number;
+  label: string;
   onChange: (v: number) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   return (
-    <div className="flex items-center bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
-      <button
-        onClick={() => onChange(Math.max(min, value - 1))}
-        className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
-      >
-        −
-      </button>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        onChange={(e) => {
-          const v = parseInt(e.target.value);
-          if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
-        }}
-        className="flex-1 text-sm text-zinc-100 font-semibold text-center bg-transparent min-w-0 py-2.5 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-      />
-      <button
-        onClick={() => onChange(Math.min(max, value + 1))}
-        className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
-      >
-        +
-      </button>
-    </div>
+    <>
+      <div className="flex items-center bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
+        <button
+          onClick={() => onChange(Math.max(min, value - 1))}
+          className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
+        >
+          −
+        </button>
+        <button
+          onClick={() => setPickerOpen(true)}
+          className="flex-1 py-2.5 text-sm text-zinc-100 font-bold text-center hover:text-emerald-400 transition-colors select-none"
+        >
+          {value}
+        </button>
+        <button
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="px-3 py-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-base font-bold select-none"
+        >
+          +
+        </button>
+      </div>
+      {pickerOpen && (
+        <NumberPickerSheet
+          value={value}
+          min={min}
+          max={max}
+          label={label}
+          onSelect={onChange}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -67,12 +132,12 @@ function SeriesInput({ value, onChange }: { value: string; onChange: (v: string)
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <p className="text-xs text-zinc-500 mb-1.5 text-center">Séries</p>
-          <Stepper value={sets} onChange={(v) => onChange(`${v}x${reps}`)} />
+          <Stepper value={sets} max={10} label="Número de séries" onChange={(v) => onChange(`${v}x${reps}`)} />
         </div>
         <span className="text-zinc-600 text-sm pb-2.5 select-none">×</span>
         <div className="flex-1">
           <p className="text-xs text-zinc-500 mb-1.5 text-center">Reps</p>
-          <Stepper value={reps} onChange={(v) => onChange(`${sets}x${v}`)} />
+          <Stepper value={reps} max={50} label="Número de repetições" onChange={(v) => onChange(`${sets}x${v}`)} />
         </div>
       </div>
     );
