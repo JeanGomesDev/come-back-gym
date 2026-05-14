@@ -26,13 +26,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Handle redirect result after returning from Google login
-    getRedirectResult(auth).catch(() => {});
+    // Keep loading=true until BOTH redirect result and auth state are resolved.
+    // This prevents AppShell from redirecting to /login before the redirect
+    // result from Google is processed (which happens on the return trip).
+    let redirectDone = false;
+    let authDone = false;
+
+    function tryFinish() {
+      if (redirectDone && authDone) setLoading(false);
+    }
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) setUser(result.user);
+      })
+      .catch(() => {})
+      .finally(() => {
+        redirectDone = true;
+        tryFinish();
+      });
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      setLoading(false);
+      authDone = true;
+      tryFinish();
     });
+
     return unsubscribe;
   }, []);
 
