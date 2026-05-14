@@ -40,6 +40,26 @@ export default function PlanoPage() {
 
   if (loading) return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
 
+  const trainingDays = plan.filter((d) => !d.isRest);
+
+  if (trainingDays.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="text-5xl mb-4">📋</div>
+        <h1 className="text-xl font-bold text-zinc-100 mb-2">Nenhum treino configurado</h1>
+        <p className="text-zinc-500 text-sm mb-6">
+          Configure sua rotina semanal — escolha os dias e adicione seus exercícios.
+        </p>
+        <Link
+          href="/plano/editar"
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-3 rounded-2xl transition-colors"
+        >
+          Criar meu plano
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
@@ -52,7 +72,7 @@ export default function PlanoPage() {
         </Link>
       </div>
       <p className="text-zinc-500 text-sm mb-6">
-        {plan.filter((d) => !d.isRest).length} dias de treino por semana
+        {trainingDays.length} dias de treino por semana
       </p>
 
       <div className="space-y-3">
