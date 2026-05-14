@@ -1,20 +1,23 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  User, onAuthStateChanged, signInWithRedirect,
+  getRedirectResult, signOut,
+} from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<string | null>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signInWithGoogle: async () => null,
+  signInWithGoogle: async () => {},
   logout: async () => {},
 });
 
@@ -23,6 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Handle redirect result after returning from Google login
+    getRedirectResult(auth).catch(() => {});
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -30,17 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  async function signInWithGoogle(): Promise<string | null> {
-    try {
-      await signInWithPopup(auth, googleProvider);
-      return null;
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? 'unknown';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        return null;
-      }
-      return code;
-    }
+  async function signInWithGoogle() {
+    await signInWithRedirect(auth, googleProvider);
   }
 
   async function logout() {
