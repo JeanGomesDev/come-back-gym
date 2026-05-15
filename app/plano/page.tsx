@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getUserPlan, getWorkoutSessions } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth-context';
+import { useLanguage } from '@/lib/language-context';
 import { WorkoutPlan } from '@/lib/types';
 
 const LABEL_COLORS: Record<string, string> = {
@@ -15,10 +16,9 @@ const LABEL_COLORS: Record<string, string> = {
 };
 const REST_COLOR = 'bg-zinc-800 border-zinc-700 text-zinc-500';
 
-const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
 export default function PlanoPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [plan, setPlan] = useState<WorkoutPlan[]>([]);
   const [doneDates, setDoneDates] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -38,7 +38,7 @@ export default function PlanoPage() {
 
   const today = new Date().getDay();
 
-  if (loading) return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
+  if (loading) return <div className="text-zinc-500 text-sm p-4">{t.loading}</div>;
 
   const trainingDays = plan.filter((d) => !d.isRest);
 
@@ -46,15 +46,15 @@ export default function PlanoPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <div className="text-5xl mb-4">📋</div>
-        <h1 className="text-xl font-bold text-zinc-100 mb-2">Nenhum treino configurado</h1>
+        <h1 className="text-xl font-bold text-zinc-100 mb-2">{t.plan.empty.title}</h1>
         <p className="text-zinc-500 text-sm mb-6">
-          Configure sua rotina semanal — escolha os dias e adicione seus exercícios.
+          {t.plan.empty.subtitle}
         </p>
         <Link
           href="/plano/editar"
           className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-3 rounded-2xl transition-colors"
         >
-          Criar meu plano
+          {t.plan.empty.btn}
         </Link>
       </div>
     );
@@ -63,16 +63,16 @@ export default function PlanoPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold text-zinc-100">Plano Semanal</h1>
+        <h1 className="text-2xl font-bold text-zinc-100">{t.plan.title}</h1>
         <Link
           href="/plano/editar"
           className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl transition-colors"
         >
-          ✏️ Editar
+          {t.plan.edit}
         </Link>
       </div>
       <p className="text-zinc-500 text-sm mb-6">
-        {trainingDays.length} dias de treino por semana
+        {t.plan.subtitle(trainingDays.length)}
       </p>
 
       <div className="space-y-3">
@@ -96,10 +96,10 @@ export default function PlanoPage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-zinc-100 text-sm">{DAYS[day.dayOfWeek]}</span>
-                    {isToday && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Hoje</span>}
+                    <span className="font-semibold text-zinc-100 text-sm">{t.plan.days[day.dayOfWeek]}</span>
+                    {isToday && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">{t.plan.today}</span>}
                   </div>
-                  <p className="text-xs text-zinc-500">{day.isRest ? 'Descanso' : day.name}</p>
+                  <p className="text-xs text-zinc-500">{day.isRest ? t.plan.rest : day.name}</p>
                 </div>
                 {!day.isRest && <span className="text-zinc-600">{isExpanded ? '▲' : '▼'}</span>}
               </button>
@@ -108,7 +108,7 @@ export default function PlanoPage() {
                 <div className="px-4 pb-4 border-t border-zinc-800">
                   {day.warmup.length > 0 && (
                     <>
-                      <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-3 mb-2">Aquecimento</h3>
+                      <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-3 mb-2">{t.plan.warmup}</h3>
                       <ul className="space-y-1">
                         {day.warmup.map((w, i) => (
                           <li key={i} className="text-xs text-zinc-400 flex gap-2">
@@ -121,7 +121,7 @@ export default function PlanoPage() {
 
                   {day.exercises.length > 0 && (
                     <>
-                      <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-4 mb-2">Exercícios</h3>
+                      <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-4 mb-2">{t.plan.exercises}</h3>
                       <div className="space-y-2">
                         {day.exercises.map((ex, i) => (
                           <div key={ex.id} className="flex items-start gap-3 bg-zinc-800/50 rounded-xl p-3">

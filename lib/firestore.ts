@@ -8,6 +8,7 @@ export interface UserProfile {
   startDate: string;
   endDate: string;
   onboardingCompleted?: boolean;
+  language?: 'pt' | 'en';
 }
 
 const DEFAULT_PROFILE: UserProfile = {

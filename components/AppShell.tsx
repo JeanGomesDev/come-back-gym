@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useLanguage } from '@/lib/language-context';
 import Navigation from './Navigation';
 import { getUserProfile } from '@/lib/firestore';
 
@@ -10,6 +11,7 @@ type ProfileCache = { uid: string; needsOnboarding: boolean };
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { setLang } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const profileCache = useRef<ProfileCache | null>(null);
@@ -30,15 +32,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     const cached = profileCache.current;
 
-    // Fast path: already confirmed this user is onboarded
     if (cached?.uid === user.uid && !cached.needsOnboarding) {
       setProfileReady(true);
       if (isLoginPage) router.replace('/');
       return;
     }
 
-    // Need to fetch profile (first time, or still in onboarding flow)
     getUserProfile(user.uid).then((profile) => {
+      if (profile.language) setLang(profile.language);
       const needsOnboarding = !profile.onboardingCompleted && profile.goalWorkouts === 0;
       profileCache.current = { uid: user.uid, needsOnboarding };
       setProfileReady(true);
@@ -49,7 +50,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         router.replace(needsOnboarding ? '/onboarding' : '/');
       }
     });
-  }, [user, loading, isLoginPage, isOnboardingPage, router]);
+  }, [user, loading, isLoginPage, isOnboardingPage, router, setLang]);
 
   if (loading || (user && !profileReady && !isLoginPage)) {
     return (

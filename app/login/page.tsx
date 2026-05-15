@@ -2,15 +2,11 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-
-const ERROR_MESSAGES: Record<string, string> = {
-  'auth/unauthorized-domain': 'Domínio não autorizado no Firebase.',
-  'auth/popup-blocked': 'Popup bloqueado. Permita popups para este site nas configurações do navegador.',
-  'auth/network-request-failed': 'Erro de rede. Verifique sua conexão.',
-};
+import { useLanguage } from '@/lib/language-context';
 
 export default function LoginPage() {
   const { signInWithGoogle } = useAuth();
+  const { t } = useLanguage();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +15,7 @@ export default function LoginPage() {
     setError(null);
     const errorCode = await signInWithGoogle();
     if (errorCode) {
-      setError(ERROR_MESSAGES[errorCode] ?? `Erro: ${errorCode}`);
+      setError(t.login.errors[errorCode] ?? `Error: ${errorCode}`);
       setSigningIn(false);
     }
   }
@@ -30,9 +26,8 @@ export default function LoginPage() {
         <div className="text-center mb-10">
           <div className="text-5xl mb-4">🏋️</div>
           <h1 className="text-3xl font-bold text-zinc-100">Come Back Gym</h1>
-          <p className="text-zinc-400 mt-2 text-sm">Seu tracker de treinos pessoal</p>
+          <p className="text-zinc-400 mt-2 text-sm">{t.login.subtitle}</p>
         </div>
-
         <button
           onClick={handleLogin}
           disabled={signingIn}
@@ -48,18 +43,14 @@ export default function LoginPage() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
           )}
-          {signingIn ? 'Entrando...' : 'Entrar com Google'}
+          {signingIn ? t.login.signingIn : t.login.btn}
         </button>
-
         {error && (
           <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
             <p className="text-red-400 text-xs text-center">{error}</p>
           </div>
         )}
-
-        <p className="text-center text-zinc-600 text-xs mt-8">
-          Apenas usuários autorizados podem acessar o app.
-        </p>
+        <p className="text-center text-zinc-600 text-xs mt-8">{t.login.footer}</p>
       </div>
     </div>
   );
