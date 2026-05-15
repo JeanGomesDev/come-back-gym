@@ -3,10 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useLanguage } from '@/lib/language-context';
 import { getUserPlan, saveUserPlan } from '@/lib/firestore';
 import { WorkoutPlan, Exercise } from '@/lib/types';
-
-const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 const REST_OPTIONS = [
   { label: '30s', value: '30s' },
@@ -122,7 +121,13 @@ function Stepper({
   );
 }
 
-function SeriesInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function SeriesInput({ value, onChange, seriesLabel, repsLabel, seriesRepsLabel }: {
+  value: string;
+  onChange: (v: string) => void;
+  seriesLabel: string;
+  repsLabel: string;
+  seriesRepsLabel: string;
+}) {
   const match = value.match(/^(\d+)x(\d+)$/);
 
   if (match) {
@@ -131,13 +136,13 @@ function SeriesInput({ value, onChange }: { value: string; onChange: (v: string)
     return (
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <p className="text-xs text-zinc-500 mb-1.5 text-center">Séries</p>
-          <Stepper value={sets} max={10} label="Número de séries" onChange={(v) => onChange(`${v}x${reps}`)} />
+          <p className="text-xs text-zinc-500 mb-1.5 text-center">{seriesLabel}</p>
+          <Stepper value={sets} max={10} label={seriesLabel} onChange={(v) => onChange(`${v}x${reps}`)} />
         </div>
         <span className="text-zinc-600 text-sm pb-2.5 select-none">×</span>
         <div className="flex-1">
-          <p className="text-xs text-zinc-500 mb-1.5 text-center">Reps</p>
-          <Stepper value={reps} max={50} label="Número de repetições" onChange={(v) => onChange(`${sets}x${v}`)} />
+          <p className="text-xs text-zinc-500 mb-1.5 text-center">{repsLabel}</p>
+          <Stepper value={reps} max={50} label={repsLabel} onChange={(v) => onChange(`${sets}x${v}`)} />
         </div>
       </div>
     );
@@ -145,7 +150,7 @@ function SeriesInput({ value, onChange }: { value: string; onChange: (v: string)
 
   return (
     <div>
-      <p className="text-xs text-zinc-500 mb-1.5">Séries × Reps</p>
+      <p className="text-xs text-zinc-500 mb-1.5">{seriesRepsLabel}</p>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -156,12 +161,17 @@ function SeriesInput({ value, onChange }: { value: string; onChange: (v: string)
   );
 }
 
-function RestInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function RestInput({ value, onChange, restLabel, customPlaceholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  restLabel: string;
+  customPlaceholder: string;
+}) {
   const isPreset = REST_OPTIONS.some((o) => o.value === value);
 
   return (
     <div>
-      <p className="text-xs text-zinc-500 mb-1.5">Descanso</p>
+      <p className="text-xs text-zinc-500 mb-1.5">{restLabel}</p>
       <div className="flex gap-1.5 flex-wrap">
         {REST_OPTIONS.map((opt) => (
           <button
@@ -181,7 +191,7 @@ function RestInput({ value, onChange }: { value: string; onChange: (v: string) =
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Personalizado (ex: 60-90s)"
+          placeholder={customPlaceholder}
           className="mt-2 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
         />
       )}
@@ -191,6 +201,7 @@ function RestInput({ value, onChange }: { value: string; onChange: (v: string) =
 
 export default function EditarPlanoPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [plan, setPlan] = useState<WorkoutPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -282,21 +293,21 @@ export default function EditarPlanoPage() {
     router.push('/plano');
   }
 
-  if (loading) return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
+  if (loading) return <div className="text-zinc-500 text-sm p-4">{t.loading}</div>;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Editar Plano</h1>
-          <p className="text-zinc-500 text-sm">Configure seus dias de treino</p>
+          <h1 className="text-2xl font-bold text-zinc-100">{t.editPlan.title}</h1>
+          <p className="text-zinc-500 text-sm">{t.editPlan.subtitle}</p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
           className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-xl transition-colors text-sm"
         >
-          {saving ? 'Salvando...' : 'Salvar'}
+          {saving ? t.editPlan.saving : t.editPlan.save}
         </button>
       </div>
 
@@ -309,7 +320,7 @@ export default function EditarPlanoPage() {
             {/* Day header */}
             <div className="flex items-center gap-3 p-4">
               <span className="text-sm font-semibold text-zinc-400 w-8">
-                {DAYS[day.dayOfWeek].slice(0, 3)}
+                {t.editPlan.days[day.dayOfWeek].slice(0, 3)}
               </span>
               <button
                 onClick={() => updateDay(day.dayOfWeek, { isRest: !day.isRest })}
@@ -319,7 +330,7 @@ export default function EditarPlanoPage() {
                     : 'bg-emerald-500/20 text-emerald-400'
                 }`}
               >
-                {day.isRest ? 'Descanso' : 'Treino'}
+                {day.isRest ? t.editPlan.rest : t.editPlan.training}
               </button>
               {!day.isRest && (
                 <button
@@ -328,7 +339,7 @@ export default function EditarPlanoPage() {
                   }
                   className="ml-auto text-zinc-500 text-xs hover:text-zinc-300 transition-colors"
                 >
-                  {expandedDay === day.dayOfWeek ? '▲ fechar' : '▼ editar exercícios'}
+                  {expandedDay === day.dayOfWeek ? t.editPlan.closeExercises : t.editPlan.editExercises}
                 </button>
               )}
             </div>
@@ -338,7 +349,7 @@ export default function EditarPlanoPage() {
                 {/* Label + name */}
                 <div className="px-4 pb-4 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
                   <div>
-                    <label className="text-xs text-zinc-500 block mb-1">Label (A, B, C…)</label>
+                    <label className="text-xs text-zinc-500 block mb-1">{t.editPlan.labelInput}</label>
                     <input
                       value={day.label}
                       onChange={(e) => updateDay(day.dayOfWeek, { label: e.target.value })}
@@ -347,7 +358,7 @@ export default function EditarPlanoPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-zinc-500 block mb-1">Nome do treino</label>
+                    <label className="text-xs text-zinc-500 block mb-1">{t.editPlan.nameInput}</label>
                     <input
                       value={day.name}
                       onChange={(e) => updateDay(day.dayOfWeek, { name: e.target.value })}
@@ -364,13 +375,13 @@ export default function EditarPlanoPage() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                          Aquecimento
+                          {t.editPlan.warmup.title}
                         </h3>
                         <button
                           onClick={() => addWarmup(day.dayOfWeek)}
                           className="text-xs text-emerald-400 hover:text-emerald-300"
                         >
-                          + adicionar
+                          {t.editPlan.warmup.add}
                         </button>
                       </div>
                       <div className="space-y-2">
@@ -379,7 +390,7 @@ export default function EditarPlanoPage() {
                             <input
                               value={w.text}
                               onChange={(e) => updateWarmup(day.dayOfWeek, i, e.target.value)}
-                              placeholder="Ex: Rotação de ombros 15x"
+                              placeholder={t.editPlan.warmup.placeholder}
                               className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                             />
                             <button
@@ -397,13 +408,13 @@ export default function EditarPlanoPage() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                          Exercícios
+                          {t.editPlan.exercises.title}
                         </h3>
                         <button
                           onClick={() => addExercise(day.dayOfWeek)}
                           className="text-xs text-emerald-400 hover:text-emerald-300"
                         >
-                          + adicionar
+                          {t.editPlan.exercises.add}
                         </button>
                       </div>
                       <div className="space-y-4">
@@ -419,7 +430,7 @@ export default function EditarPlanoPage() {
                                 onChange={(e) =>
                                   updateExercise(day.dayOfWeek, ex.id, { name: e.target.value })
                                 }
-                                placeholder="Nome do exercício"
+                                placeholder={t.editPlan.exercises.namePlaceholder}
                                 className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                               />
                               <button
@@ -436,6 +447,9 @@ export default function EditarPlanoPage() {
                               onChange={(v) =>
                                 updateExercise(day.dayOfWeek, ex.id, { series: v })
                               }
+                              seriesLabel={t.editPlan.exercises.seriesLabel}
+                              repsLabel={t.editPlan.exercises.repsLabel}
+                              seriesRepsLabel={t.editPlan.exercises.seriesReps}
                             />
 
                             {/* Rest chips */}
@@ -444,11 +458,13 @@ export default function EditarPlanoPage() {
                               onChange={(v) =>
                                 updateExercise(day.dayOfWeek, ex.id, { rest: v })
                               }
+                              restLabel={t.editPlan.exercises.rest}
+                              customPlaceholder={t.editPlan.exercises.customRest}
                             />
 
                             {/* Weight text */}
                             <div>
-                              <p className="text-xs text-zinc-500 mb-1.5">Peso inicial</p>
+                              <p className="text-xs text-zinc-500 mb-1.5">{t.editPlan.exercises.weight}</p>
                               <input
                                 value={ex.initialWeight}
                                 onChange={(e) =>
@@ -456,7 +472,7 @@ export default function EditarPlanoPage() {
                                     initialWeight: e.target.value,
                                   })
                                 }
-                                placeholder="Ex: 8-10kg cada, barra + 10kg…"
+                                placeholder={t.editPlan.exercises.weightPlaceholder}
                                 className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                               />
                             </div>
@@ -468,12 +484,12 @@ export default function EditarPlanoPage() {
                     {/* Tip */}
                     <div>
                       <label className="text-xs text-zinc-500 block mb-1">
-                        Dica do treino (opcional)
+                        {t.editPlan.tip}
                       </label>
                       <input
                         value={day.tip ?? ''}
                         onChange={(e) => updateDay(day.dayOfWeek, { tip: e.target.value })}
-                        placeholder="Ex: Desça até tocar o peito no supino…"
+                        placeholder={t.editPlan.tipPlaceholder}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -490,7 +506,7 @@ export default function EditarPlanoPage() {
         disabled={saving}
         className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-semibold py-3 rounded-2xl transition-colors"
       >
-        {saving ? 'Salvando...' : 'Salvar Plano'}
+        {saving ? t.editPlan.saving : t.editPlan.savePlan}
       </button>
     </div>
   );

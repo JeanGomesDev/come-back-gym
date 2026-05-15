@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getUserPlan, saveWorkoutSession, getWorkoutSessions } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth-context';
+import { useLanguage } from '@/lib/language-context';
 import { WorkoutPlan, WorkoutSession } from '@/lib/types';
 
 const today = new Date();
@@ -11,6 +12,7 @@ const todayStr = today.toISOString().split('T')[0];
 
 export default function TreinoHoje() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [workout, setWorkout] = useState<WorkoutPlan | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [duration, setDuration] = useState('');
@@ -68,10 +70,8 @@ export default function TreinoHoje() {
     setTimeout(() => setSaved(false), 3000);
   }
 
-  const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-
   if (loadingData) {
-    return <div className="text-zinc-500 text-sm p-4">Carregando...</div>;
+    return <div className="text-zinc-500 text-sm p-4">{t.loading}</div>;
   }
 
   if (!workout || workout.isRest) {
@@ -80,19 +80,19 @@ export default function TreinoHoje() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <div className="text-6xl mb-5">{hasNoplan ? '📋' : '😴'}</div>
         <h1 className="text-2xl font-bold text-zinc-100 mb-1">
-          {hasNoplan ? 'Sem treino configurado' : 'Dia de Descanso'}
+          {hasNoplan ? t.today.noPlan.title : t.today.restDay.title}
         </h1>
-        <p className="text-zinc-500 text-sm mb-6">{days[dayOfWeek]}</p>
+        <p className="text-zinc-500 text-sm mb-6">{t.today.days[dayOfWeek]}</p>
         {hasNoplan ? (
           <a
             href="/plano/editar"
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold px-6 py-3 rounded-2xl transition-all duration-150 shadow-lg shadow-emerald-900/30"
           >
             <span className="text-base">+</span>
-            Criar meu plano de treino
+            {t.today.noPlan.btn}
           </a>
         ) : (
-          <p className="text-zinc-500 text-sm">Hidrate-se, durma bem, deixa o músculo crescer.</p>
+          <p className="text-zinc-500 text-sm">{t.today.restDay.subtitle}</p>
         )}
       </div>
     );
@@ -106,11 +106,11 @@ export default function TreinoHoje() {
   return (
     <div>
       <div className="mb-6">
-        <p className="text-zinc-500 text-sm">{days[dayOfWeek]}, {today.toLocaleDateString('pt-BR')}</p>
+        <p className="text-zinc-500 text-sm">{t.today.days[dayOfWeek]}, {today.toLocaleDateString(t.today.locale)}</p>
         <h1 className="text-2xl font-bold text-zinc-100 mt-1">{workout.label} — {workout.name}</h1>
         {alreadyDone && (
           <span className="inline-block mt-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-semibold">
-            ✓ Treino registrado hoje
+            {t.today.alreadyDone}
           </span>
         )}
       </div>
@@ -118,7 +118,7 @@ export default function TreinoHoje() {
       {/* Progress bar */}
       <div className="mb-6">
         <div className="flex justify-between text-xs text-zinc-500 mb-1">
-          <span>Progresso</span>
+          <span>{t.today.progress}</span>
           <span>{Math.round(progress)}%</span>
         </div>
         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
@@ -132,7 +132,7 @@ export default function TreinoHoje() {
       {/* Warmup */}
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-          Aquecimento
+          {t.today.warmup}
         </h2>
         <div className="space-y-2">
           {workout.warmup.map((item, i) => {
@@ -163,7 +163,7 @@ export default function TreinoHoje() {
       {/* Exercises */}
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-          Exercícios
+          {t.today.exercises}
         </h2>
         <div className="space-y-2">
           {workout.exercises.map((ex, i) => {
@@ -206,10 +206,10 @@ export default function TreinoHoje() {
 
       {/* Save session */}
       <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-3">Registrar Treino</h2>
+        <h2 className="text-sm font-semibold text-zinc-300 mb-3">{t.today.save.title}</h2>
         <div className="flex gap-3 mb-3">
           <div className="flex-1">
-            <label className="text-xs text-zinc-500 block mb-1">Duração (min)</label>
+            <label className="text-xs text-zinc-500 block mb-1">{t.today.save.duration}</label>
             <input
               type="number"
               value={duration}
@@ -219,18 +219,18 @@ export default function TreinoHoje() {
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs text-zinc-500 block mb-1">Exercícios ✓</label>
+            <label className="text-xs text-zinc-500 block mb-1">{t.today.save.done}</label>
             <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100">
               {checked.size}/{allIds.length}
             </div>
           </div>
         </div>
         <div className="mb-3">
-          <label className="text-xs text-zinc-500 block mb-1">Observações</label>
+          <label className="text-xs text-zinc-500 block mb-1">{t.today.save.notes}</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Como foi o treino? Pesos usados..."
+            placeholder={t.today.save.notesPlaceholder}
             rows={2}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500 resize-none"
           />
@@ -239,7 +239,7 @@ export default function TreinoHoje() {
           onClick={handleSave}
           className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-colors"
         >
-          {saved ? '✓ Salvo!' : alreadyDone ? 'Atualizar Treino' : 'Concluir Treino'}
+          {saved ? t.today.save.saved : alreadyDone ? t.today.save.update : t.today.save.save}
         </button>
       </section>
     </div>
