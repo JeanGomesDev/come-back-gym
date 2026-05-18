@@ -73,6 +73,13 @@ const pt = {
     },
     tip: 'Dica do treino (opcional)', tipPlaceholder: 'Ex: Desça até tocar o peito no supino…',
     days: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+    library: {
+      btn: '📚 Biblioteca',
+      title: 'Biblioteca de Exercícios',
+      back: '← Voltar',
+      cancel: 'Cancelar',
+      add: (n: number) => `Adicionar ${n} exercício${n !== 1 ? 's' : ''}`,
+    },
   },
   dashboard: {
     title: 'Dashboard',
@@ -208,6 +215,13 @@ const en: typeof pt = {
     },
     tip: 'Workout tip (optional)', tipPlaceholder: 'E.g. Lower until chest touches on bench press…',
     days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    library: {
+      btn: '📚 Library',
+      title: 'Exercise Library',
+      back: '← Back',
+      cancel: 'Cancel',
+      add: (n: number) => `Add ${n} exercise${n !== 1 ? 's' : ''}`,
+    },
   },
   dashboard: {
     title: 'Dashboard',
