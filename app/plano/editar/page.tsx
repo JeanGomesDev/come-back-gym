@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
 import { getUserPlan, saveUserPlan } from '@/lib/firestore';
 import { WorkoutPlan, Exercise } from '@/lib/types';
+import { exerciseLibrary, MuscleGroup } from '@/lib/exercise-library';
+import type { Lang } from '@/lib/translations';
 
 const REST_OPTIONS = [
   { label: '30s', value: '30s' },
@@ -199,14 +201,155 @@ function RestInput({ value, onChange, restLabel, customPlaceholder }: {
   );
 }
 
+function ExerciseLibrarySheet({
+  lang,
+  labels,
+  onAdd,
+  onClose,
+}: {
+  lang: Lang;
+  labels: { title: string; back: string; cancel: string; add: (n: number) => string };
+  onAdd: (exercises: Exercise[]) => void;
+  onClose: () => void;
+}) {
+  const [group, setGroup] = useState<MuscleGroup | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  function toggleSelect(idx: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  }
+
+  function handleAdd() {
+    if (!group) return;
+    const exercises: Exercise[] = Array.from(selected).sort((a, b) => a - b).map((idx) => ({
+      id: crypto.randomUUID(),
+      name: group.exercises[idx].name[lang],
+      series: group.exercises[idx].series,
+      rest: group.exercises[idx].rest,
+      initialWeight: '',
+    }));
+    onAdd(exercises);
+    onClose();
+  }
+
+  function handleBack() {
+    setGroup(null);
+    setSelected(new Set());
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="max-w-2xl mx-auto bg-zinc-900 border-t border-zinc-700 rounded-t-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-800 flex-shrink-0">
+            {group ? (
+              <button onClick={handleBack} className="text-zinc-400 hover:text-zinc-200 text-sm">
+                {labels.back}
+              </button>
+            ) : (
+              <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto" />
+            )}
+            <p className="text-sm font-semibold text-zinc-100 flex-1 text-center">
+              {group ? `${group.icon} ${group.name[lang]}` : labels.title}
+            </p>
+            {group ? (
+              <div className="w-14" />
+            ) : (
+              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-sm">✕</button>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="overflow-y-auto flex-1 overscroll-contain">
+            {!group ? (
+              /* Muscle group grid */
+              <div className="grid grid-cols-2 gap-2 p-4">
+                {exerciseLibrary.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setGroup(g)}
+                    className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors text-left"
+                  >
+                    <span className="text-2xl">{g.icon}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-100">{g.name[lang]}</p>
+                      <p className="text-xs text-zinc-500">{g.exercises.length} ex.</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* Exercise list */
+              <div className="p-3 space-y-1">
+                {group.exercises.map((ex, idx) => {
+                  const checked = selected.has(idx);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => toggleSelect(idx)}
+                      className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-colors text-left ${
+                        checked
+                          ? 'bg-emerald-500/15 border border-emerald-500/30'
+                          : 'hover:bg-zinc-800 border border-transparent'
+                      }`}
+                    >
+                      <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center text-xs ${
+                        checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-600'
+                      }`}>
+                        {checked && '✓'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm font-medium ${checked ? 'text-emerald-300' : 'text-zinc-200'}`}>
+                          {ex.name[lang]}
+                        </p>
+                        <p className="text-xs text-zinc-500">{ex.series} · {ex.rest}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-3 border-t border-zinc-800 flex-shrink-0 space-y-2">
+            {group && selected.size > 0 && (
+              <button
+                onClick={handleAdd}
+                className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+              >
+                {labels.add(selected.size)}
+              </button>
+            )}
+            <button
+              onClick={group ? handleBack : onClose}
+              className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-400 text-sm font-medium hover:border-zinc-600 transition-colors"
+            >
+              {group ? labels.back : labels.cancel}
+            </button>
+          </div>
+          <div className="h-6" />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function EditarPlanoPage() {
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const { user, } = useAuth();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const [plan, setPlan] = useState<WorkoutPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const [libraryDay, setLibraryDay] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -235,6 +378,14 @@ export default function EditarPlanoPage() {
     setPlan((prev) =>
       prev.map((d) =>
         d.dayOfWeek === dayOfWeek ? { ...d, exercises: [...d.exercises, ex] } : d
+      )
+    );
+  }
+
+  function addExercisesFromLibrary(dayOfWeek: number, exercises: Exercise[]) {
+    setPlan((prev) =>
+      prev.map((d) =>
+        d.dayOfWeek === dayOfWeek ? { ...d, exercises: [...d.exercises, ...exercises] } : d
       )
     );
   }
@@ -410,12 +561,20 @@ export default function EditarPlanoPage() {
                         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                           {t.editPlan.exercises.title}
                         </h3>
-                        <button
-                          onClick={() => addExercise(day.dayOfWeek)}
-                          className="text-xs text-emerald-400 hover:text-emerald-300"
-                        >
-                          {t.editPlan.exercises.add}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setLibraryDay(day.dayOfWeek)}
+                            className="text-xs text-zinc-400 hover:text-zinc-200"
+                          >
+                            {t.editPlan.library.btn}
+                          </button>
+                          <button
+                            onClick={() => addExercise(day.dayOfWeek)}
+                            className="text-xs text-emerald-400 hover:text-emerald-300"
+                          >
+                            {t.editPlan.exercises.add}
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-4">
                         {day.exercises.map((ex, idx) => (
@@ -508,6 +667,15 @@ export default function EditarPlanoPage() {
       >
         {saving ? t.editPlan.saving : t.editPlan.savePlan}
       </button>
+
+      {libraryDay !== null && (
+        <ExerciseLibrarySheet
+          lang={lang}
+          labels={t.editPlan.library}
+          onAdd={(exercises) => addExercisesFromLibrary(libraryDay, exercises)}
+          onClose={() => setLibraryDay(null)}
+        />
+      )}
     </div>
   );
 }
