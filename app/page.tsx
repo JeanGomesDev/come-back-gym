@@ -13,6 +13,7 @@ const todayStr = today.toISOString().split('T')[0];
 export default function TreinoHoje() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const [allDays, setAllDays] = useState<WorkoutPlan[]>([]);
   const [workout, setWorkout] = useState<WorkoutPlan | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [duration, setDuration] = useState('');
@@ -20,6 +21,7 @@ export default function TreinoHoje() {
   const [saved, setSaved] = useState(false);
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [swapOpen, setSwapOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -28,6 +30,7 @@ export default function TreinoHoje() {
       getUserPlan(user.uid),
       getWorkoutSessions(user.uid),
     ]).then(([days, sessions]) => {
+      setAllDays(days);
       const todayWorkout = days.find((d) => d.dayOfWeek === dayOfWeek) ?? null;
       setWorkout(todayWorkout);
       if (todayWorkout && !todayWorkout.isRest) {
@@ -44,6 +47,16 @@ export default function TreinoHoje() {
       setLoadingData(false);
     }).catch(() => setLoadingData(false));
   }, [user]);
+
+  function handleSwap(day: WorkoutPlan) {
+    setWorkout(day);
+    setChecked(new Set());
+    setDuration('');
+    setNotes('');
+    setAlreadyDone(false);
+    setSaved(false);
+    setSwapOpen(false);
+  }
 
   function toggleCheck(id: string) {
     setChecked((prev) => {
@@ -76,25 +89,83 @@ export default function TreinoHoje() {
 
   if (!workout || workout.isRest) {
     const hasNoplan = !workout || (!workout.name && !workout.label);
+    const workoutDays = allDays.filter((d) => d.dayOfWeek !== dayOfWeek && !d.isRest && (d.name || d.label));
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="text-6xl mb-5">{hasNoplan ? '📋' : '😴'}</div>
-        <h1 className="text-2xl font-bold text-zinc-100 mb-1">
-          {hasNoplan ? t.today.noPlan.title : t.today.restDay.title}
-        </h1>
-        <p className="text-zinc-500 text-sm mb-6">{t.today.days[dayOfWeek]}</p>
-        {hasNoplan ? (
-          <a
-            href="/plano/editar"
-            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold px-6 py-3 rounded-2xl transition-all duration-150 shadow-lg shadow-emerald-900/30"
-          >
-            <span className="text-base">+</span>
-            {t.today.noPlan.btn}
-          </a>
-        ) : (
-          <p className="text-zinc-500 text-sm">{t.today.restDay.subtitle}</p>
+      <>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <div className="text-6xl mb-5">{hasNoplan ? '📋' : '😴'}</div>
+          <h1 className="text-2xl font-bold text-zinc-100 mb-1">
+            {hasNoplan ? t.today.noPlan.title : t.today.restDay.title}
+          </h1>
+          <p className="text-zinc-500 text-sm mb-6">{t.today.days[dayOfWeek]}</p>
+          {hasNoplan ? (
+            <a
+              href="/plano/editar"
+              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold px-6 py-3 rounded-2xl transition-all duration-150 shadow-lg shadow-emerald-900/30"
+            >
+              <span className="text-base">+</span>
+              {t.today.noPlan.btn}
+            </a>
+          ) : (
+            <>
+              <p className="text-zinc-500 text-sm mb-6">{t.today.restDay.subtitle}</p>
+              {workoutDays.length > 0 && (
+                <button
+                  onClick={() => setSwapOpen(true)}
+                  className="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-300 font-semibold px-6 py-3 rounded-2xl transition-all duration-150"
+                >
+                  {t.today.swap.btn}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {swapOpen && (
+          <>
+            <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={() => setSwapOpen(false)} />
+            <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-4 duration-200">
+              <div className="max-w-2xl mx-auto bg-zinc-900 border-t border-zinc-700 rounded-t-3xl overflow-hidden shadow-2xl">
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 bg-zinc-700 rounded-full" />
+                </div>
+                <div className="px-5 py-4 border-b border-zinc-800">
+                  <p className="text-sm font-semibold text-zinc-100">{t.today.swap.title}</p>
+                </div>
+                <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+                  {workoutDays.map((day) => (
+                    <button
+                      key={day.dayOfWeek}
+                      onClick={() => handleSwap(day)}
+                      className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-zinc-300 hover:bg-zinc-800 active:bg-zinc-700 transition-colors text-left"
+                    >
+                      <span className="text-base w-6 text-center">🏋️</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {t.today.days[day.dayOfWeek]}
+                          {day.label && day.name ? ` — ${day.label} · ${day.name}` : ''}
+                        </p>
+                        {day.exercises.length > 0 && (
+                          <p className="text-xs text-zinc-500">{day.exercises.length} ex.</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="p-3">
+                  <button
+                    onClick={() => setSwapOpen(false)}
+                    className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-400 text-sm font-medium hover:border-zinc-600 transition-colors"
+                  >
+                    {t.today.swap.cancel}
+                  </button>
+                </div>
+                <div className="h-6" />
+              </div>
+            </div>
+          </>
         )}
-      </div>
+      </>
     );
   }
 
@@ -103,11 +174,23 @@ export default function TreinoHoje() {
   const allIds = [...warmupIds, ...allExerciseIds];
   const progress = allIds.length > 0 ? (checked.size / allIds.length) * 100 : 0;
 
+  const swappableDays = allDays.filter((d) => d.dayOfWeek !== dayOfWeek);
+
   return (
     <div>
       <div className="mb-6">
         <p className="text-zinc-500 text-sm">{t.today.days[dayOfWeek]}, {today.toLocaleDateString(t.today.locale)}</p>
-        <h1 className="text-2xl font-bold text-zinc-100 mt-1">{workout.label} — {workout.name}</h1>
+        <div className="flex items-start justify-between gap-2 mt-1">
+          <h1 className="text-2xl font-bold text-zinc-100">{workout.label} — {workout.name}</h1>
+          {swappableDays.length > 0 && (
+            <button
+              onClick={() => setSwapOpen(true)}
+              className="flex-shrink-0 text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl transition-colors mt-1"
+            >
+              {t.today.swap.btn}
+            </button>
+          )}
+        </div>
         {alreadyDone && (
           <span className="inline-block mt-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-semibold">
             {t.today.alreadyDone}
@@ -242,6 +325,55 @@ export default function TreinoHoje() {
           {saved ? t.today.save.saved : alreadyDone ? t.today.save.update : t.today.save.save}
         </button>
       </section>
+
+      {/* Swap workout bottom sheet */}
+      {swapOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={() => setSwapOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-4 duration-200">
+            <div className="max-w-2xl mx-auto bg-zinc-900 border-t border-zinc-700 rounded-t-3xl overflow-hidden shadow-2xl">
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 bg-zinc-700 rounded-full" />
+              </div>
+              <div className="px-5 py-4 border-b border-zinc-800">
+                <p className="text-sm font-semibold text-zinc-100">{t.today.swap.title}</p>
+              </div>
+              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+                {swappableDays.map((day) => (
+                  <button
+                    key={day.dayOfWeek}
+                    onClick={() => handleSwap(day)}
+                    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-zinc-300 hover:bg-zinc-800 active:bg-zinc-700 transition-colors text-left"
+                  >
+                    <span className="text-base w-6 text-center">{day.isRest ? '😴' : '🏋️'}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {t.today.days[day.dayOfWeek]}
+                        {day.label && day.name ? ` — ${day.label} · ${day.name}` : ''}
+                      </p>
+                      {day.isRest && (
+                        <p className="text-xs text-zinc-500">{t.today.swap.restLabel}</p>
+                      )}
+                      {!day.isRest && day.exercises.length > 0 && (
+                        <p className="text-xs text-zinc-500">{day.exercises.length} ex.</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="p-3">
+                <button
+                  onClick={() => setSwapOpen(false)}
+                  className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-400 text-sm font-medium hover:border-zinc-600 transition-colors"
+                >
+                  {t.today.swap.cancel}
+                </button>
+              </div>
+              <div className="h-6" />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -47,6 +47,7 @@ const pt = {
     progress: 'Progresso', warmup: 'Aquecimento', exercises: 'Exercícios',
     alreadyDone: '✓ Treino registrado hoje',
     save: { title: 'Registrar Treino', duration: 'Duração (min)', done: 'Exercícios ✓', notes: 'Observações', notesPlaceholder: 'Como foi o treino? Pesos usados...', save: 'Concluir Treino', update: 'Atualizar Treino', saved: '✓ Salvo!' },
+    swap: { btn: '🔄 Trocar treino', title: 'Escolher treino para hoje', cancel: 'Cancelar', restLabel: 'Descanso' },
     locale: 'pt-BR',
   },
   plan: {
@@ -181,6 +182,7 @@ const en: typeof pt = {
     progress: 'Progress', warmup: 'Warm-up', exercises: 'Exercises',
     alreadyDone: '✓ Workout logged today',
     save: { title: 'Log Workout', duration: 'Duration (min)', done: 'Exercises ✓', notes: 'Notes', notesPlaceholder: 'How was the workout? Weights used...', save: 'Complete Workout', update: 'Update Workout', saved: '✓ Saved!' },
+    swap: { btn: '🔄 Swap workout', title: 'Choose workout for today', cancel: 'Cancel', restLabel: 'Rest' },
     locale: 'en-US',
   },
   plan: {
