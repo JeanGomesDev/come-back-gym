@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUserPlan, saveWorkoutSession, getWorkoutSessions } from '@/lib/firestore';
+import { getUserPlan, saveWorkoutSession, getWorkoutSessions, getUserProfile, updateUserProfile } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
 import { WorkoutPlan, WorkoutSession } from '@/lib/types';
@@ -15,6 +15,7 @@ export default function TreinoHoje() {
   const { t } = useLanguage();
   const [allDays, setAllDays] = useState<WorkoutPlan[]>([]);
   const [workout, setWorkout] = useState<WorkoutPlan | null>(null);
+  const [planOffset, setPlanOffset] = useState(0);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
@@ -29,9 +30,13 @@ export default function TreinoHoje() {
     Promise.all([
       getUserPlan(user.uid),
       getWorkoutSessions(user.uid),
-    ]).then(([days, sessions]) => {
+      getUserProfile(user.uid),
+    ]).then(([days, sessions, profile]) => {
       setAllDays(days);
-      const todayWorkout = days.find((d) => d.dayOfWeek === dayOfWeek) ?? null;
+      const offset = profile.planOffset ?? 0;
+      setPlanOffset(offset);
+      const effectiveDayOfWeek = (dayOfWeek + offset) % 7;
+      const todayWorkout = days.find((d) => d.dayOfWeek === effectiveDayOfWeek) ?? null;
       setWorkout(todayWorkout);
       if (todayWorkout && !todayWorkout.isRest) {
         const existing = sessions.find(
@@ -49,6 +54,12 @@ export default function TreinoHoje() {
   }, [user]);
 
   function handleSwap(day: WorkoutPlan) {
+    if (!user) return;
+    // Compute how many days ahead the chosen workout is relative to today,
+    // so the sequence advances correctly from tomorrow onward.
+    const newOffset = ((day.dayOfWeek - dayOfWeek) + 7) % 7;
+    setPlanOffset(newOffset);
+    updateUserProfile(user.uid, { planOffset: newOffset });
     setWorkout(day);
     setChecked(new Set());
     setDuration('');
@@ -89,7 +100,8 @@ export default function TreinoHoje() {
 
   if (!workout || workout.isRest) {
     const hasNoplan = !workout || (!workout.name && !workout.label);
-    const workoutDays = allDays.filter((d) => d.dayOfWeek !== dayOfWeek && !d.isRest && (d.name || d.label));
+    const effectiveDayOfWeek = (dayOfWeek + planOffset) % 7;
+    const workoutDays = allDays.filter((d) => d.dayOfWeek !== effectiveDayOfWeek && !d.isRest && (d.name || d.label));
     return (
       <>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -174,7 +186,8 @@ export default function TreinoHoje() {
   const allIds = [...warmupIds, ...allExerciseIds];
   const progress = allIds.length > 0 ? (checked.size / allIds.length) * 100 : 0;
 
-  const swappableDays = allDays.filter((d) => d.dayOfWeek !== dayOfWeek);
+  const effectiveDayOfWeek = (dayOfWeek + planOffset) % 7;
+  const swappableDays = allDays.filter((d) => d.dayOfWeek !== effectiveDayOfWeek);
 
   return (
     <div>

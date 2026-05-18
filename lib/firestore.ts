@@ -9,6 +9,7 @@ export interface UserProfile {
   endDate: string;
   onboardingCompleted?: boolean;
   language?: 'pt' | 'en';
+  planOffset?: number;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
