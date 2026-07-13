@@ -123,6 +123,8 @@ function Stepper({
   );
 }
 
+const SERIES_PRESETS = ['3x10', '3x12', '4x10', '4x12', '4x8', '5x5', '3x15', '3x8'];
+
 function SeriesInput({ value, onChange, seriesLabel, repsLabel, seriesRepsLabel }: {
   value: string;
   onChange: (v: string) => void;
@@ -132,33 +134,42 @@ function SeriesInput({ value, onChange, seriesLabel, repsLabel, seriesRepsLabel 
 }) {
   const match = value.match(/^(\d+)x(\d+)$/);
 
-  if (match) {
-    const sets = parseInt(match[1]);
-    const reps = parseInt(match[2]);
-    return (
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <p className="text-xs text-zinc-500 mb-1.5 text-center">{seriesLabel}</p>
-          <Stepper value={sets} max={10} label={seriesLabel} onChange={(v) => onChange(`${v}x${reps}`)} />
-        </div>
-        <span className="text-zinc-600 text-sm pb-2.5 select-none">×</span>
-        <div className="flex-1">
-          <p className="text-xs text-zinc-500 mb-1.5 text-center">{repsLabel}</p>
-          <Stepper value={reps} max={50} label={repsLabel} onChange={(v) => onChange(`${sets}x${v}`)} />
+  return (
+    <div className="space-y-3">
+      {/* Quick presets */}
+      <div>
+        <p className="text-xs text-zinc-500 mb-2">{seriesRepsLabel}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {SERIES_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => onChange(preset)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+                value === preset
+                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                  : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div>
-      <p className="text-xs text-zinc-500 mb-1.5">{seriesRepsLabel}</p>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="4x10"
-        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
-      />
+      {/* Fine-tune steppers if value matches NxN */}
+      {match && (
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <p className="text-xs text-zinc-500 mb-1.5 text-center">{seriesLabel}</p>
+            <Stepper value={parseInt(match[1])} max={10} label={seriesLabel} onChange={(v) => onChange(`${v}x${match[2]}`)} />
+          </div>
+          <span className="text-zinc-600 text-sm pb-2.5 select-none">×</span>
+          <div className="flex-1">
+            <p className="text-xs text-zinc-500 mb-1.5 text-center">{repsLabel}</p>
+            <Stepper value={parseInt(match[2])} max={50} label={repsLabel} onChange={(v) => onChange(`${match[1]}x${v}`)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -517,7 +528,7 @@ export default function EditarPlanoPage() {
             {!day.isRest && (
               <>
                 {/* Label + name */}
-                <div className="px-4 pb-4 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
+                <div className="px-4 pt-3 pb-3 grid grid-cols-2 gap-3 border-t border-zinc-800">
                   <div>
                     <label className="text-xs text-zinc-500 block mb-1">{t.editPlan.labelInput}</label>
                     <input
@@ -538,8 +549,39 @@ export default function EditarPlanoPage() {
                   </div>
                 </div>
 
+                {/* Exercise summary + quick library access */}
+                <div className="px-4 pb-3 border-t border-zinc-800/60 pt-3">
+                  {day.exercises.length === 0 ? (
+                    <button
+                      onClick={() => setLibraryDay(day.dayOfWeek)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-zinc-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-zinc-500 hover:text-emerald-400 transition-all text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                      Escolher exercícios da biblioteca
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setExpandedDay(expandedDay === day.dayOfWeek ? null : day.dayOfWeek)}
+                        className="text-xs text-zinc-400 flex items-center gap-1.5"
+                      >
+                        <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">{day.exercises.length}</span>
+                        exercício{day.exercises.length !== 1 ? 's' : ''} configurado{day.exercises.length !== 1 ? 's' : ''}
+                        <svg className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${expandedDay === day.dayOfWeek ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      </button>
+                      <button
+                        onClick={() => setLibraryDay(day.dayOfWeek)}
+                        className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        Adicionar da biblioteca
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Expandable exercise editor */}
-                {expandedDay === day.dayOfWeek && (
+                {expandedDay === day.dayOfWeek && day.exercises.length > 0 && (
                   <div className="px-4 pb-4 space-y-5 border-t border-zinc-800 pt-4">
                     {/* Warmup */}
                     <div>
@@ -596,20 +638,12 @@ export default function EditarPlanoPage() {
                         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                           {t.editPlan.exercises.title}
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setLibraryDay(day.dayOfWeek)}
-                            className="text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded-lg transition-colors"
-                          >
-                            {t.editPlan.library.btn}
-                          </button>
-                          <button
-                            onClick={() => addExercise(day.dayOfWeek)}
-                            className="text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg transition-colors"
-                          >
-                            + {t.editPlan.exercises.add}
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => addExercise(day.dayOfWeek)}
+                          className="text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          + manual
+                        </button>
                       </div>
                       <div className="space-y-3">
                         {day.exercises.map((ex, idx) => (
