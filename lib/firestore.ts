@@ -99,6 +99,36 @@ export async function saveWeightEntry(uid: string, w: WeightEntry): Promise<void
   await setDoc(doc(db, 'users', uid, 'weight', w.date), w);
 }
 
+export async function resetGoals(uid: string): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  await setDoc(doc(db, 'users', uid, 'meta', 'profile'), {
+    goalWeight: 0,
+    goalWorkouts: 0,
+    startDate: today,
+    endDate: `${new Date().getFullYear()}-12-31`,
+  }, { merge: true });
+}
+
+export async function resetMeasurements(uid: string): Promise<void> {
+  const snap = await getDocs(collection(db, 'users', uid, 'measurements'));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+export async function resetBioimpedancia(uid: string): Promise<void> {
+  const snap = await getDocs(collection(db, 'users', uid, 'bioimpedancia'));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+export async function resetWeightHistory(uid: string): Promise<void> {
+  const snap = await getDocs(collection(db, 'users', uid, 'weight'));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+export async function resetWorkoutSessions(uid: string): Promise<void> {
+  const snap = await getDocs(collection(db, 'users', uid, 'sessions'));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
 export async function clearUserData(uid: string): Promise<void> {
   for (const col of ['sessions', 'measurements', 'bioimpedancia', 'weight']) {
     const snap = await getDocs(collection(db, 'users', uid, col));
