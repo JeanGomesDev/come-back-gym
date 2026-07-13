@@ -408,6 +408,34 @@ export default function EditarPlanoPage() {
     );
   }
 
+  function moveExercise(dayOfWeek: number, exId: string, direction: 'up' | 'down') {
+    setPlan((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        const exercises = [...d.exercises];
+        const idx = exercises.findIndex((e) => e.id === exId);
+        if (idx === -1) return d;
+        const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= exercises.length) return d;
+        [exercises[idx], exercises[newIdx]] = [exercises[newIdx], exercises[idx]];
+        return { ...d, exercises };
+      })
+    );
+  }
+
+  function moveWarmup(dayOfWeek: number, index: number, direction: 'up' | 'down') {
+    setPlan((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        const warmup = [...d.warmup];
+        const newIdx = direction === 'up' ? index - 1 : index + 1;
+        if (newIdx < 0 || newIdx >= warmup.length) return d;
+        [warmup[index], warmup[newIdx]] = [warmup[newIdx], warmup[index]];
+        return { ...d, warmup };
+      })
+    );
+  }
+
   function addWarmup(dayOfWeek: number) {
     setPlan((prev) =>
       prev.map((d) =>
@@ -448,18 +476,9 @@ export default function EditarPlanoPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-100">{t.editPlan.title}</h1>
-          <p className="text-zinc-500 text-sm">{t.editPlan.subtitle}</p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-xl transition-colors text-sm"
-        >
-          {saving ? t.editPlan.saving : t.editPlan.save}
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-zinc-100">{t.editPlan.title}</h1>
+        <p className="text-zinc-500 text-sm">{t.editPlan.subtitle}</p>
       </div>
 
       <div className="space-y-3">
@@ -537,18 +556,34 @@ export default function EditarPlanoPage() {
                       </div>
                       <div className="space-y-2">
                         {day.warmup.map((w, i) => (
-                          <div key={i} className="flex gap-2">
+                          <div key={i} className="flex gap-2 items-center">
                             <input
                               value={w.text}
                               onChange={(e) => updateWarmup(day.dayOfWeek, i, e.target.value)}
                               placeholder={t.editPlan.warmup.placeholder}
                               className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                             />
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                onClick={() => moveWarmup(day.dayOfWeek, i, 'up')}
+                                disabled={i === 0}
+                                className="w-5 h-5 rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-20 flex items-center justify-center transition-colors"
+                              >
+                                <svg className="w-2.5 h-2.5 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                              </button>
+                              <button
+                                onClick={() => moveWarmup(day.dayOfWeek, i, 'down')}
+                                disabled={i === day.warmup.length - 1}
+                                className="w-5 h-5 rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-20 flex items-center justify-center transition-colors"
+                              >
+                                <svg className="w-2.5 h-2.5 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                              </button>
+                            </div>
                             <button
                               onClick={() => removeWarmup(day.dayOfWeek, i)}
-                              className="text-zinc-600 hover:text-red-400 px-2 text-lg leading-none"
+                              className="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center transition-colors"
                             >
-                              ×
+                              <svg className="w-3 h-3 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                           </div>
                         ))}
@@ -557,31 +592,31 @@ export default function EditarPlanoPage() {
 
                     {/* Exercises */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                           {t.editPlan.exercises.title}
                         </h3>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={() => setLibraryDay(day.dayOfWeek)}
-                            className="text-xs text-zinc-400 hover:text-zinc-200"
+                            className="text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded-lg transition-colors"
                           >
                             {t.editPlan.library.btn}
                           </button>
                           <button
                             onClick={() => addExercise(day.dayOfWeek)}
-                            className="text-xs text-emerald-400 hover:text-emerald-300"
+                            className="text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg transition-colors"
                           >
-                            {t.editPlan.exercises.add}
+                            + {t.editPlan.exercises.add}
                           </button>
                         </div>
                       </div>
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {day.exercises.map((ex, idx) => (
-                          <div key={ex.id} className="bg-zinc-800/50 rounded-2xl p-4 space-y-4">
-                            {/* Exercise name */}
+                          <div key={ex.id} className="bg-zinc-800/40 border border-zinc-700/50 rounded-2xl p-4 space-y-4">
+                            {/* Exercise name row */}
                             <div className="flex gap-2 items-center">
-                              <span className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-400 font-bold flex-shrink-0">
+                              <span className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-400 font-bold flex-shrink-0">
                                 {idx + 1}
                               </span>
                               <input
@@ -592,11 +627,31 @@ export default function EditarPlanoPage() {
                                 placeholder={t.editPlan.exercises.namePlaceholder}
                                 className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
                               />
+                              {/* Reorder + delete */}
+                              <div className="flex flex-col gap-0.5 flex-shrink-0">
+                                <button
+                                  onClick={() => moveExercise(day.dayOfWeek, ex.id, 'up')}
+                                  disabled={idx === 0}
+                                  className="w-6 h-6 rounded-lg bg-zinc-700 hover:bg-zinc-600 disabled:opacity-20 flex items-center justify-center transition-colors"
+                                  title="Mover para cima"
+                                >
+                                  <svg className="w-3 h-3 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                                </button>
+                                <button
+                                  onClick={() => moveExercise(day.dayOfWeek, ex.id, 'down')}
+                                  disabled={idx === day.exercises.length - 1}
+                                  className="w-6 h-6 rounded-lg bg-zinc-700 hover:bg-zinc-600 disabled:opacity-20 flex items-center justify-center transition-colors"
+                                  title="Mover para baixo"
+                                >
+                                  <svg className="w-3 h-3 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                              </div>
                               <button
                                 onClick={() => removeExercise(day.dayOfWeek, ex.id)}
-                                className="text-zinc-600 hover:text-red-400 px-1 text-xl leading-none flex-shrink-0"
+                                className="w-7 h-7 rounded-xl bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center flex-shrink-0 transition-colors group"
+                                title="Remover exercício"
                               >
-                                ×
+                                <svg className="w-3.5 h-3.5 text-red-400 group-hover:text-red-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                               </button>
                             </div>
 
