@@ -52,6 +52,13 @@ export async function saveUserPlan(uid: string, days: WorkoutPlan[]): Promise<vo
   await setDoc(doc(db, 'users', uid, 'meta', 'plan'), { days });
 }
 
+export async function resetUserPlan(uid: string): Promise<void> {
+  const emptyDays: WorkoutPlan[] = Array.from({ length: 7 }, (_, i) => ({
+    id: String(i), label: '', name: '', dayOfWeek: i, isRest: true, warmup: [], exercises: [],
+  }));
+  await setDoc(doc(db, 'users', uid, 'meta', 'plan'), { days: emptyDays });
+}
+
 export async function getWorkoutSessions(uid: string): Promise<WorkoutSession[]> {
   const q = query(collection(db, 'users', uid, 'sessions'), orderBy('date'));
   const snap = await getDocs(q);

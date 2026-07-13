@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
-import { getUserPlan, saveUserPlan } from '@/lib/firestore';
+import { getUserPlan, saveUserPlan, resetUserPlan } from '@/lib/firestore';
 import { WorkoutPlan, Exercise } from '@/lib/types';
 import { exerciseLibrary, MuscleGroup } from '@/lib/exercise-library';
 import type { Lang } from '@/lib/translations';
@@ -361,6 +361,8 @@ export default function EditarPlanoPage() {
   const [saving, setSaving] = useState(false);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [libraryDay, setLibraryDay] = useState<number | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -481,6 +483,17 @@ export default function EditarPlanoPage() {
     await saveUserPlan(user.uid, plan);
     setSaving(false);
     router.push('/plano');
+  }
+
+  async function handleReset() {
+    if (!user) return;
+    setResetting(true);
+    await resetUserPlan(user.uid);
+    const fresh = await getUserPlan(user.uid);
+    setPlan(fresh);
+    setExpandedDay(null);
+    setConfirmReset(false);
+    setResetting(false);
   }
 
   if (loading) return <div className="text-zinc-500 text-sm p-4">{t.loading}</div>;
@@ -756,6 +769,38 @@ export default function EditarPlanoPage() {
       >
         {saving ? t.editPlan.saving : t.editPlan.savePlan}
       </button>
+
+      {/* Reset plan */}
+      {!confirmReset ? (
+        <button
+          onClick={() => setConfirmReset(true)}
+          className="w-full mt-3 py-3 rounded-2xl border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 text-sm font-medium transition-colors"
+        >
+          🗑 Apagar todos os treinos e recomeçar
+        </button>
+      ) : (
+        <div className="mt-3 p-4 bg-red-500/8 border border-red-500/25 rounded-2xl">
+          <p className="text-sm font-semibold text-red-300 mb-1">Apagar todos os treinos?</p>
+          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+            Todos os exercícios e configurações de dias serão removidos. Seu histórico de treinos, pesos e medidas <span className="text-zinc-400 font-medium">não será afetado</span>.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmReset(false)}
+              className="flex-1 py-2.5 rounded-xl border border-zinc-700 text-zinc-400 text-sm font-medium hover:border-zinc-600 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold disabled:opacity-60 transition-colors"
+            >
+              {resetting ? 'Apagando…' : 'Sim, apagar tudo'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {libraryDay !== null && (
         <ExerciseLibrarySheet
