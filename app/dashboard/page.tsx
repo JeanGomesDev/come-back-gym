@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
-import { getUserProfile, getWorkoutSessions, getWeightHistory, saveWeightEntry, updateUserProfile, UserProfile } from '@/lib/firestore';
+import { getUserProfile, getWorkoutSessions, getWeightHistory, saveWeightEntry, UserProfile } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
 import { WorkoutSession, WeightEntry } from '@/lib/types';
@@ -33,8 +34,6 @@ export default function DashboardPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [newWeight, setNewWeight] = useState('');
   const [weightSaved, setWeightSaved] = useState(false);
-  const [editingGoals, setEditingGoals] = useState(false);
-  const [goalForm, setGoalForm] = useState({ goalWeight: '', goalWorkouts: '', endDate: '' });
 
   useEffect(() => {
     if (!user) return;
@@ -63,18 +62,6 @@ export default function DashboardPage() {
     setNewWeight('');
     setWeightSaved(true);
     setTimeout(() => setWeightSaved(false), 2000);
-  }
-
-  async function handleSaveGoals() {
-    if (!user || !profile) return;
-    const updated: Partial<UserProfile> = {
-      goalWeight: parseFloat(goalForm.goalWeight) || profile.goalWeight,
-      goalWorkouts: parseInt(goalForm.goalWorkouts) || profile.goalWorkouts,
-      endDate: goalForm.endDate || profile.endDate,
-    };
-    await updateUserProfile(user.uid, updated);
-    setProfile((p) => ({ ...p!, ...updated }));
-    setEditingGoals(false);
   }
 
   if (loadingData) return <div className="text-zinc-500 text-sm p-4">{t.loading}</div>;
@@ -122,54 +109,16 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold text-zinc-100">{t.dashboard.title}</h1>
-        <button
-          onClick={() => {
-            setGoalForm({
-              goalWeight: String(profile.goalWeight),
-              goalWorkouts: String(profile.goalWorkouts),
-              endDate: profile.endDate,
-            });
-            setEditingGoals(true);
-          }}
+        <Link
+          href="/metas"
           className="text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-700 px-3 py-1.5 rounded-xl transition-colors"
         >
           {t.dashboard.goalsBtn}
-        </button>
+        </Link>
       </div>
       <p className="text-zinc-500 text-sm mb-6">
         {t.dashboard.greeting(firstName, new Date().getFullYear())}
       </p>
-
-      {/* Edit goals modal */}
-      {editingGoals && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm space-y-4">
-            <h2 className="text-lg font-bold text-zinc-100">{t.dashboard.editGoals.title}</h2>
-            <div>
-              <label className="text-xs text-zinc-400 block mb-1">{t.dashboard.editGoals.goalWeight}</label>
-              <input type="number" step="0.1" value={goalForm.goalWeight}
-                onChange={(e) => setGoalForm((f) => ({ ...f, goalWeight: e.target.value }))}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-zinc-100 focus:outline-none focus:border-emerald-500 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-zinc-400 block mb-1">{t.dashboard.editGoals.goalWorkouts}</label>
-              <input type="number" value={goalForm.goalWorkouts}
-                onChange={(e) => setGoalForm((f) => ({ ...f, goalWorkouts: e.target.value }))}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-zinc-100 focus:outline-none focus:border-emerald-500 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-zinc-400 block mb-1">{t.dashboard.editGoals.endDate}</label>
-              <input type="date" value={goalForm.endDate}
-                onChange={(e) => setGoalForm((f) => ({ ...f, endDate: e.target.value }))}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-zinc-100 focus:outline-none focus:border-emerald-500 text-sm" />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setEditingGoals(false)} className="flex-1 py-2 rounded-xl border border-zinc-700 text-zinc-400 text-sm hover:border-zinc-500 transition-colors">{t.dashboard.editGoals.cancel}</button>
-              <button onClick={handleSaveGoals} className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors">{t.dashboard.editGoals.save}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main goal */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4">
