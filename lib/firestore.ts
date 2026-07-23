@@ -166,6 +166,33 @@ export async function searchPublicUsers(emailPrefix: string): Promise<PublicUser
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ uid: d.id, totalWorkouts: 0, ...d.data() } as PublicUserProfile));
 }
+// ─── Friends ───────────────────────────────────────────────────────────────
+
+export interface FriendEntry {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  email: string;
+  addedAt: string;
+}
+
+export async function getFriends(uid: string): Promise<FriendEntry[]> {
+  const snap = await getDocs(collection(db, 'users', uid, 'friends'));
+  return snap.docs.map((d) => d.data() as FriendEntry);
+}
+
+export async function addFriend(uid: string, friend: Omit<FriendEntry, 'addedAt'>): Promise<void> {
+  await setDoc(doc(db, 'users', uid, 'friends', friend.uid), {
+    ...friend,
+    addedAt: new Date().toISOString().split('T')[0],
+  });
+}
+
+export async function removeFriend(uid: string, friendUid: string): Promise<void> {
+  await deleteDoc(doc(db, 'users', uid, 'friends', friendUid));
+}
+
+
 
 export async function getPublicUsers(uids: string[]): Promise<PublicUserProfile[]> {
   if (uids.length === 0) return [];
