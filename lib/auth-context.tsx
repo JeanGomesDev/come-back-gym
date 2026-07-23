@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
+import { upsertPublicProfile } from './firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +27,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+      if (u) {
+        upsertPublicProfile(u.uid, {
+          displayName: u.displayName || '',
+          photoURL: u.photoURL || null,
+          email: (u.email || '').toLowerCase(),
+        }).catch(() => {});
+      }
     });
     return unsubscribe;
   }, []);

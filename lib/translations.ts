@@ -4,7 +4,7 @@ const pt = {
   loading: 'Carregando...',
   nav: {
     hoje: 'Hoje', plano: 'Plano', stats: 'Stats', medidas: 'Medidas', bio: 'Bio',
-    settings: 'Configurações', clearData: 'Limpar meus dados', logout: 'Sair',
+    social: 'Social', settings: 'Configurações', clearData: 'Limpar meus dados', logout: 'Sair',
     clearConfirm: 'Isso vai apagar todos os seus treinos, medidas, peso e histórico. Esta ação não pode ser desfeita.',
     cancel: 'Cancelar', confirmDelete: 'Sim, apagar tudo', clearing: 'Limpando...',
   },
@@ -146,7 +146,7 @@ const en: typeof pt = {
   loading: 'Loading...',
   nav: {
     hoje: 'Today', plano: 'Plan', stats: 'Stats', medidas: 'Measures', bio: 'Bio',
-    settings: 'Settings', clearData: 'Clear my data', logout: 'Sign out',
+    social: 'Social', settings: 'Settings', clearData: 'Clear my data', logout: 'Sign out',
     clearConfirm: 'This will delete all your workouts, measurements, weight history and data. This action cannot be undone.',
     cancel: 'Cancel', confirmDelete: 'Yes, delete everything', clearing: 'Clearing...',
   },

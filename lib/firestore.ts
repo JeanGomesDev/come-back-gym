@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, where, limit, addDoc, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { db } from './firebase';
 import { WorkoutPlan, WorkoutSession, BodyMeasurement, BioimpedanciaEntry, WeightEntry } from './types';
 
@@ -128,6 +128,88 @@ export async function resetWorkoutSessions(uid: string): Promise<void> {
   const snap = await getDocs(collection(db, 'users', uid, 'sessions'));
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
+
+// ─── Social ────────────────────────────────────────────────────────────────
+
+export interface PublicUserProfile {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  email: string;
+  totalWorkouts: number;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  createdBy: string;
+  memberUids: string[];
+  createdAt: string;
+}
+
+export async function upsertPublicProfile(uid: string, data: { displayName: string; photoURL: string | null; email: string }): Promise<void> {
+  await setDoc(doc(db, 'publicUsers', uid), data, { merge: true });
+}
+
+export async function incrementPublicWorkoutCount(uid: string): Promise<void> {
+  await setDoc(doc(db, 'publicUsers', uid), { totalWorkouts: increment(1) }, { merge: true });
+}
+
+export async function searchPublicUsers(emailPrefix: string): Promise<PublicUserProfile[]> {
+  if (!emailPrefix.trim()) return [];
+  const q = query(
+    collection(db, 'publicUsers'),
+    where('email', '>=', emailPrefix.toLowerCase()),
+    where('email', '<=', emailPrefix.toLowerCase() + ''),
+    limit(8)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ uid: d.id, totalWorkouts: 0, ...d.data() } as PublicUserProfile));
+}
+
+export async function getPublicUsers(uids: string[]): Promise<PublicUserProfile[]> {
+  if (uids.length === 0) return [];
+  const results = await Promise.all(uids.map((uid) => getDoc(doc(db, 'publicUsers', uid))));
+  return results
+    .filter((s) => s.exists())
+    .map((s) => ({ uid: s.id, totalWorkouts: 0, ...s.data() } as PublicUserProfile));
+}
+
+export async function createGroup(name: string, creatorUid: string, memberUids: string[]): Promise<string> {
+  const ref = await addDoc(collection(db, 'groups'), {
+    name,
+    createdBy: creatorUid,
+    memberUids: Array.from(new Set([creatorUid, ...memberUids])),
+    createdAt: new Date().toISOString().split('T')[0],
+  });
+  return ref.id;
+}
+
+export async function getUserGroups(uid: string): Promise<Group[]> {
+  const q = query(collection(db, 'groups'), where('memberUids', 'array-contains', uid));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Group));
+}
+
+export async function getGroup(groupId: string): Promise<Group | null> {
+  const snap = await getDoc(doc(db, 'groups', groupId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as Group;
+}
+
+export async function addMemberToGroup(groupId: string, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'groups', groupId), { memberUids: arrayUnion(uid) });
+}
+
+export async function removeMemberFromGroup(groupId: string, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'groups', groupId), { memberUids: arrayRemove(uid) });
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  await deleteDoc(doc(db, 'groups', groupId));
+}
+
+// ─── Clear all ─────────────────────────────────────────────────────────────
 
 export async function clearUserData(uid: string): Promise<void> {
   for (const col of ['sessions', 'measurements', 'bioimpedancia', 'weight']) {
