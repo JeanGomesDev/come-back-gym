@@ -86,6 +86,16 @@ function IconTrash({ className }: { className?: string }) {
   );
 }
 
+function IconSocial({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+    </svg>
+  );
+}
+
 function IconLogout({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -193,6 +203,17 @@ export default function Navigation() {
 
               {/* Menu items */}
               <div className="p-3 space-y-1">
+                <Link
+                  href="/social"
+                  onClick={closeMenu}
+                  className="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-zinc-300 hover:bg-zinc-800 active:bg-zinc-700 transition-colors"
+                >
+                  <span className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                    <IconSocial className="w-4 h-4" />
+                  </span>
+                  <span className="text-sm font-medium">{t.nav.social}</span>
+                </Link>
+
                 <Link
                   href="/configuracoes"
                   onClick={closeMenu}

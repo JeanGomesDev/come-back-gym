@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUserPlan, saveWorkoutSession, getWorkoutSessions, getUserProfile, updateUserProfile } from '@/lib/firestore';
+import { getUserPlan, saveWorkoutSession, getWorkoutSessions, getUserProfile, updateUserProfile, incrementPublicWorkoutCount } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
 import { WorkoutPlan, WorkoutSession } from '@/lib/types';
@@ -89,6 +89,7 @@ export default function TreinoHoje() {
       checkedExercises: Array.from(checked),
     };
     await saveWorkoutSession(user.uid, session);
+    if (!alreadyDone) incrementPublicWorkoutCount(user.uid).catch(() => {});
     setSaved(true);
     setAlreadyDone(true);
     setTimeout(() => setSaved(false), 3000);
